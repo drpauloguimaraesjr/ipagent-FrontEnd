@@ -1,3 +1,4 @@
+tunel
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -5,13 +6,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPagent — Assistente Médico com IA (Frontend Client)</title>
-    <meta name="description" content="Cliente frontend do IPagent para transcrição médica ao vivo com correção, anamnese em tempo real e fluxo de consciência IA.">
+    <meta name="description"
+        content="Cliente frontend do IPagent para transcrição médica ao vivo com correção, anamnese em tempo real e fluxo de consciência IA.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         :root {
             --bg-primary: #0d1117;
             --bg-secondary: #161b22;
@@ -36,7 +44,7 @@
             --accent-green-glow: rgba(63, 185, 80, 0.15);
             --radius: 12px;
             --radius-sm: 8px;
-            --shadow: 0 4px 24px rgba(0,0,0,0.4);
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
             --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -67,6 +75,7 @@
             flex-direction: column;
             height: 100vh;
         }
+
         .sidebar-header {
             padding: 16px;
             border-bottom: 1px solid var(--border);
@@ -74,6 +83,7 @@
             align-items: center;
             justify-content: space-between;
         }
+
         .sidebar-header h2 {
             font-size: 14px;
             font-weight: 600;
@@ -81,6 +91,7 @@
             align-items: center;
             gap: 8px;
         }
+
         .sidebar-new-btn {
             padding: 5px 12px;
             font-size: 11px;
@@ -93,15 +104,30 @@
             font-family: inherit;
             transition: var(--transition);
         }
-        .sidebar-new-btn:hover { background: rgba(68, 147, 248, 0.25); }
+
+        .sidebar-new-btn:hover {
+            background: rgba(68, 147, 248, 0.25);
+        }
+
         .sidebar-list {
             flex: 1;
             overflow-y: auto;
             padding: 8px;
         }
-        .sidebar-list::-webkit-scrollbar { width: 4px; }
-        .sidebar-list::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .sidebar-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
         .history-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -111,8 +137,17 @@
             cursor: pointer;
             transition: var(--transition);
         }
-        .history-card:hover { background: var(--bg-card-hover); border-color: var(--border-light); }
-        .history-card.active { border-color: var(--accent-blue); background: var(--accent-blue-glow); }
+
+        .history-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+        }
+
+        .history-card.active {
+            border-color: var(--accent-blue);
+            background: var(--accent-blue-glow);
+        }
+
         .history-card .hc-date {
             font-size: 11px;
             color: var(--text-muted);
@@ -121,6 +156,7 @@
             align-items: center;
             margin-bottom: 6px;
         }
+
         .history-card .hc-preview {
             font-size: 12px;
             color: var(--text-secondary);
@@ -131,6 +167,7 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
         }
+
         .hc-status {
             font-size: 9px;
             text-transform: uppercase;
@@ -139,18 +176,44 @@
             padding: 2px 6px;
             border-radius: 4px;
         }
-        .hc-status.recording { background: var(--accent-red-glow); color: var(--accent-red); }
-        .hc-status.paused { background: rgba(227, 179, 65, 0.15); color: var(--accent-amber); }
-        .hc-status.completed { background: var(--accent-green-glow); color: var(--accent-green); }
-        .hc-audio { margin-top: 8px; }
-        .hc-audio audio { width: 100%; height: 32px; }
+
+        .hc-status.recording {
+            background: var(--accent-red-glow);
+            color: var(--accent-red);
+        }
+
+        .hc-status.paused {
+            background: rgba(227, 179, 65, 0.15);
+            color: var(--accent-amber);
+        }
+
+        .hc-status.completed {
+            background: var(--accent-green-glow);
+            color: var(--accent-green);
+        }
+
+        .hc-audio {
+            margin-top: 8px;
+        }
+
+        .hc-audio audio {
+            width: 100%;
+            height: 32px;
+        }
+
         .sidebar-empty {
             text-align: center;
             padding: 40px 16px;
             color: var(--text-muted);
             font-size: 12px;
         }
-        .sidebar-empty span { font-size: 28px; display: block; margin-bottom: 8px; }
+
+        .sidebar-empty span {
+            font-size: 28px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
         .sidebar-footer {
             padding: 10px 16px;
             border-top: 1px solid var(--border);
@@ -160,7 +223,12 @@
             align-items: center;
             gap: 6px;
         }
-        @media (max-width: 1100px) { .sidebar { display: none; } }
+
+        @media (max-width: 1100px) {
+            .sidebar {
+                display: none;
+            }
+        }
 
         /* ===== HEADER (Top Bar) ===== */
         header {
@@ -181,10 +249,13 @@
         }
 
         .header-logo {
-            width: 28px; height: 28px;
+            width: 28px;
+            height: 28px;
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
             border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .header-name {
@@ -224,7 +295,9 @@
             font-variant-numeric: tabular-nums;
         }
 
-        .timer-separator { color: var(--text-muted); }
+        .timer-separator {
+            color: var(--text-muted);
+        }
 
         .timer-limit {
             background: var(--bg-input);
@@ -238,7 +311,10 @@
             text-align: center;
         }
 
-        .timer-unit { color: var(--text-muted); font-size: 11px; }
+        .timer-unit {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
 
         .header-right {
             display: flex;
@@ -258,18 +334,28 @@
             background: transparent;
             color: var(--text-secondary);
         }
-        .header-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+        .header-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
 
         .header-btn.danger {
             background: var(--accent-red);
             color: white;
             border-color: var(--accent-red);
         }
-        .header-btn.danger:hover { background: #da3633; }
+
+        .header-btn.danger:hover {
+            background: #da3633;
+        }
 
         .header-icon-btn {
-            width: 32px; height: 32px;
-            display: flex; align-items: center; justify-content: center;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             cursor: pointer;
@@ -277,7 +363,11 @@
             color: var(--text-secondary);
             transition: var(--transition);
         }
-        .header-icon-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+        .header-icon-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
 
         /* ===== MAIN 3-COLUMN LAYOUT ===== */
         main {
@@ -318,9 +408,19 @@
             overflow-y: auto;
             padding: 16px 20px;
         }
-        .column-content::-webkit-scrollbar { width: 4px; }
-        .column-content::-webkit-scrollbar-track { background: transparent; }
-        .column-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .column-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .column-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .column-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
 
         /* ===== LEFT COLUMN: Registro da Sessão ===== */
         .session-info {
@@ -345,7 +445,10 @@
             align-items: center;
             gap: 5px;
         }
-        .export-btn:hover { background: rgba(68, 147, 248, 0.25); }
+
+        .export-btn:hover {
+            background: rgba(68, 147, 248, 0.25);
+        }
 
         /* Tabs */
         .tab-bar {
@@ -371,14 +474,23 @@
             font-family: inherit;
             white-space: nowrap;
         }
-        .tab-btn:hover { color: var(--text-primary); }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
         .tab-btn.active {
             color: var(--accent-blue);
             border-bottom-color: var(--accent-blue);
         }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
 
         .empty-state {
             color: var(--text-muted);
@@ -395,13 +507,25 @@
         }
 
         .tab-badge {
-            width: 6px; height: 6px;
+            width: 6px;
+            height: 6px;
             background: var(--accent-indigo);
             border-radius: 50%;
             display: inline-block;
             animation: pulse 1.5s infinite;
         }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
 
         /* ===== CENTER COLUMN: Controle de Áudio ===== */
         .audio-section {
@@ -461,7 +585,8 @@
         }
 
         .mic-btn {
-            width: 72px; height: 72px;
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
             border: none;
             cursor: pointer;
@@ -476,6 +601,7 @@
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
             box-shadow: 0 4px 20px rgba(68, 147, 248, 0.3);
         }
+
         .mic-btn.idle:hover {
             transform: scale(1.05);
             box-shadow: 0 6px 30px rgba(68, 147, 248, 0.4);
@@ -486,9 +612,17 @@
             box-shadow: 0 4px 20px rgba(248, 81, 73, 0.4);
             animation: record-pulse 1.5s infinite;
         }
+
         @keyframes record-pulse {
-            0%, 100% { box-shadow: 0 4px 20px rgba(248, 81, 73, 0.4); }
-            50% { box-shadow: 0 4px 40px rgba(248, 81, 73, 0.6); }
+
+            0%,
+            100% {
+                box-shadow: 0 4px 20px rgba(248, 81, 73, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 4px 40px rgba(248, 81, 73, 0.6);
+            }
         }
 
         /* Live Transcript Box (bottom of center) */
@@ -549,7 +683,18 @@
             color: var(--text-primary);
             animation: slideIn 0.3s ease;
         }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
         .insight-label {
             font-size: 11px;
@@ -583,10 +728,15 @@
             font-family: inherit;
             transition: var(--transition);
         }
-        .chat-input:focus { outline: none; border-color: var(--accent-blue); }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
 
         .chat-send {
-            width: 34px; height: 34px;
+            width: 34px;
+            height: 34px;
             border-radius: var(--radius-sm);
             border: none;
             background: var(--accent-blue);
@@ -597,16 +747,26 @@
             justify-content: center;
             transition: var(--transition);
         }
-        .chat-send:hover { background: var(--accent-blue-hover); }
+
+        .chat-send:hover {
+            background: var(--accent-blue-hover);
+        }
 
         /* Status indicators */
         .status-dot {
-            width: 8px; height: 8px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             background: var(--accent-amber);
         }
-        .status-dot.online { background: var(--accent-green); }
-        .status-dot.offline { background: var(--accent-red); }
+
+        .status-dot.online {
+            background: var(--accent-green);
+        }
+
+        .status-dot.offline {
+            background: var(--accent-red);
+        }
 
         .generating-indicator {
             font-size: 11px;
@@ -617,24 +777,38 @@
         }
 
         .spinner {
-            width: 12px; height: 12px;
+            width: 12px;
+            height: 12px;
             border: 2px solid var(--border);
             border-top-color: var(--accent-blue);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         /* ===== SETTINGS MODAL ===== */
         .modal-overlay {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.7);
-            display: flex; align-items: center; justify-content: center;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             z-index: 1000;
-            opacity: 0; pointer-events: none;
+            opacity: 0;
+            pointer-events: none;
             transition: opacity 0.2s ease;
         }
-        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
 
         .modal {
             background: var(--bg-secondary);
@@ -646,13 +820,29 @@
             box-shadow: var(--shadow);
         }
 
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .modal-header h3 { font-size: 16px; }
-        .modal-close { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px; }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-header h3 {
+            font-size: 16px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+        }
 
         .modal-input-group {
             margin-bottom: 16px;
         }
+
         .modal-input-group label {
             display: block;
             font-size: 12px;
@@ -662,6 +852,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+
         .modal-input-group input {
             width: 100%;
             padding: 10px 14px;
@@ -672,7 +863,11 @@
             font-size: 13px;
             font-family: inherit;
         }
-        .modal-input-group input:focus { outline: none; border-color: var(--accent-blue); }
+
+        .modal-input-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
 
         .modal-save-btn {
             width: 100%;
@@ -687,7 +882,10 @@
             font-weight: 500;
             transition: var(--transition);
         }
-        .modal-save-btn:hover { background: var(--accent-blue-hover); }
+
+        .modal-save-btn:hover {
+            background: var(--accent-blue-hover);
+        }
 
         /* Firebase status in header */
         .firebase-badge {
@@ -701,6 +899,7 @@
             align-items: center;
             gap: 4px;
         }
+
         .firebase-badge.offline {
             background: rgba(248, 81, 73, 0.15);
             color: var(--accent-red);
@@ -721,15 +920,29 @@
             opacity: 0;
             transition: all 0.3s ease;
         }
-        .toast.show { transform: translateY(0); opacity: 1; }
-        .toast.success { background: var(--accent-green); }
-        .toast.error { background: var(--accent-red); }
-        .toast.info { background: var(--accent-blue); }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--accent-green);
+        }
+
+        .toast.error {
+            background: var(--accent-red);
+        }
+
+        .toast.info {
+            background: var(--accent-blue);
+        }
 
         /* ===== LOG PANEL ===== */
         .log-panel {
             position: fixed;
-            bottom: 0; right: 0;
+            bottom: 0;
+            right: 0;
             width: 420px;
             max-height: 320px;
             background: var(--bg-secondary);
@@ -741,7 +954,11 @@
             transform: translateY(calc(100% - 36px));
             transition: transform 0.3s ease;
         }
-        .log-panel.open { transform: translateY(0); }
+
+        .log-panel.open {
+            transform: translateY(0);
+        }
+
         .log-panel-header {
             padding: 8px 14px;
             display: flex;
@@ -751,6 +968,7 @@
             cursor: pointer;
             min-height: 36px;
         }
+
         .log-panel-header span {
             font-size: 12px;
             font-weight: 600;
@@ -758,6 +976,7 @@
             align-items: center;
             gap: 6px;
         }
+
         .log-panel-body {
             flex: 1;
             overflow-y: auto;
@@ -766,14 +985,42 @@
             font-size: 11px;
             line-height: 1.5;
         }
-        .log-panel-body::-webkit-scrollbar { width: 4px; }
-        .log-panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-        .log-entry { padding: 2px 4px; border-bottom: 1px solid rgba(48,54,61,0.3); }
-        .log-entry .log-time { color: var(--text-muted); margin-right: 6px; }
-        .log-entry.info { color: var(--accent-blue); }
-        .log-entry.success { color: var(--accent-green); }
-        .log-entry.warn { color: var(--accent-amber); }
-        .log-entry.error { color: var(--accent-red); }
+
+        .log-panel-body::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-panel-body::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .log-entry {
+            padding: 2px 4px;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+        }
+
+        .log-entry .log-time {
+            color: var(--text-muted);
+            margin-right: 6px;
+        }
+
+        .log-entry.info {
+            color: var(--accent-blue);
+        }
+
+        .log-entry.success {
+            color: var(--accent-green);
+        }
+
+        .log-entry.warn {
+            color: var(--accent-amber);
+        }
+
+        .log-entry.error {
+            color: var(--accent-red);
+        }
+
         .log-count {
             background: var(--accent-red);
             color: white;
@@ -783,16 +1030,24 @@
             border-radius: 999px;
             display: none;
         }
+
         .log-clear {
-            background: none; border: none;
-            color: var(--text-muted); cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
             font-size: 11px;
         }
-        .log-clear:hover { color: var(--text-primary); }
+
+        .log-clear:hover {
+            color: var(--text-primary);
+        }
 
         /* Responsive */
         @media (max-width: 900px) {
-            main { grid-template-columns: 1fr; }
+            main {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -809,7 +1064,8 @@
             <div class="sidebar-empty" id="sidebar-empty"><span>📂</span>Carregando consultas...</div>
         </div>
         <div class="sidebar-footer" id="sidebar-footer">
-            <span id="fb-status-dot" style="width:6px;height:6px;border-radius:50%;background:var(--accent-amber);"></span>
+            <span id="fb-status-dot"
+                style="width:6px;height:6px;border-radius:50%;background:var(--accent-amber);"></span>
             <span id="fb-status-text">Conectando Firebase...</span>
         </div>
     </aside>
@@ -817,151 +1073,176 @@
     <!-- ===== CONTENT WRAPPER ===== -->
     <div class="content-wrapper">
 
-    <!-- ===== HEADER ===== -->
-    <header>
-        <div class="header-left">
-            <div class="header-logo">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2M12 18a2 2 0 0 1 2 2v2M4.93 4.93v.01M19.07 19.07v.01M2 12h2M20 12h2"></path></svg>
+        <!-- ===== HEADER ===== -->
+        <header>
+            <div class="header-left">
+                <div class="header-logo">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path
+                            d="M12 2a2 2 0 0 1 2 2v2M12 18a2 2 0 0 1 2 2v2M4.93 4.93v.01M19.07 19.07v.01M2 12h2M20 12h2">
+                        </path>
+                    </svg>
+                </div>
+                <span class="header-name">Dr. Paulo Guimarães Jr.</span>
+                <span id="connection-dot" class="status-dot"></span>
+                <span id="connection-text" style="font-size:11px; color:var(--text-muted);">Conectando...</span>
             </div>
-            <span class="header-name">Dr. Paulo Guimarães Jr.</span>
-            <span id="connection-dot" class="status-dot"></span>
-            <span id="connection-text" style="font-size:11px; color:var(--text-muted);">Conectando...</span>
-        </div>
 
-        <div class="header-center">
-            <div class="clock">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                <span id="clock-display">--:--:--</span>
+            <div class="header-center">
+                <div class="clock">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span id="clock-display">--:--:--</span>
+                </div>
+                <div class="session-timer">
+                    <span class="timer-value" id="session-timer">00:00</span>
+                    <span class="timer-separator">/</span>
+                    <input type="text" class="timer-limit" id="timer-limit" value="" placeholder="∞">
+                    <span class="timer-unit">min</span>
+                </div>
             </div>
-            <div class="session-timer">
-                <span class="timer-value" id="session-timer">00:00</span>
-                <span class="timer-separator">/</span>
-                <input type="text" class="timer-limit" id="timer-limit" value="" placeholder="∞">
-                <span class="timer-unit">min</span>
-            </div>
-        </div>
 
-        <div class="header-right">
-            <span class="firebase-badge" id="firebase-badge">
-                <span id="fb-dot" style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);"></span>
-                Firebase
-            </span>
-            <button class="header-btn" id="btn-save-firebase" onclick="manualSave()">💾 Salvar</button>
-            <button class="header-btn" id="btn-back" onclick="location.reload()">Voltar</button>
-            <button class="header-btn danger" id="btn-end-session" onclick="endSession()">Encerrar Sessão</button>
-            <button class="header-icon-btn" id="btn-settings" title="Configurações">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
-            </button>
-        </div>
-    </header>
-
-    <!-- ===== MAIN: 3 COLUMNS ===== -->
-    <main>
-
-        <!-- LEFT COLUMN: Registro da Sessão -->
-        <div class="column" id="col-left">
-            <div class="column-header">
-                <div class="column-title">Registro da Sessão</div>
-                <button class="export-btn" id="btn-export" onclick="exportSession()">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Exportar
+            <div class="header-right">
+                <span class="firebase-badge" id="firebase-badge">
+                    <span id="fb-dot"
+                        style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);"></span>
+                    Firebase
+                </span>
+                <button class="header-btn" id="btn-save-firebase" onclick="manualSave()">💾 Salvar</button>
+                <button class="header-btn" id="btn-back" onclick="location.reload()">Voltar</button>
+                <button class="header-btn danger" id="btn-end-session" onclick="endSession()">Encerrar Sessão</button>
+                <button class="header-icon-btn" id="btn-settings" title="Configurações">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42">
+                        </path>
+                    </svg>
                 </button>
             </div>
+        </header>
 
-            <div style="padding: 12px 20px 0;">
-                <div class="session-info" id="session-info">
-                    Inicie uma sessão para começar.
-                </div>
+        <!-- ===== MAIN: 3 COLUMNS ===== -->
+        <main>
 
-                <div class="tab-bar">
-                    <button class="tab-btn active" id="tab-transcription" onclick="switchTab('transcription')">Transcrição Completa</button>
-                    <button class="tab-btn" id="tab-anamnesis" onclick="switchTab('anamnesis')">
-                        Anamnese em Tempo Real
-                        <span id="anamnesis-badge" class="tab-badge" style="display:none;"></span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="column-content">
-                <div class="tab-content active" id="tab-content-transcription">
-                    <div class="empty-state" id="transcription-empty">A transcrição aparecerá aqui.</div>
-                    <div id="transcription-container" style="display:none;"></div>
-                </div>
-
-                <div class="tab-content" id="tab-content-anamnesis">
-                    <div class="generating-indicator" id="anamnesis-generating">
-                        <span class="spinner"></span> Gerando anamnese...
-                    </div>
-                    <div class="empty-state" id="anamnesis-empty">A anamnese será gerada aqui.</div>
-                    <div id="anamnesis-container" class="anamnesis-text" style="display:none;"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- CENTER COLUMN: Controle de Áudio -->
-        <div class="column" id="col-center">
-            <div class="column-header">
-                <div class="column-title" id="audio-title">
-                    <span id="audio-status-icon">🎙️</span>
-                    Controle de Áudio
-                </div>
-                <span class="audio-status" id="audio-status">Pressione Iniciar para começar</span>
-            </div>
-
-            <div class="audio-section">
-                <div style="width:100%; max-width:300px; text-align:left;">
-                    <label class="mic-selector-label">Microfone</label>
-                    <select class="mic-selector" id="mic-select">
-                        <option>Inicie a escuta para detectar microfones.</option>
-                    </select>
-                </div>
-
-                <div class="waveform-container">
-                    <canvas id="waveform-canvas"></canvas>
-                </div>
-
-                <div class="mic-controls">
-                    <button class="mic-btn idle" id="btn-record" onclick="toggleRecording()">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                            <line x1="12" x2="12" y1="19" y2="22"></line>
+            <!-- LEFT COLUMN: Registro da Sessão -->
+            <div class="column" id="col-left">
+                <div class="column-header">
+                    <div class="column-title">Registro da Sessão</div>
+                    <button class="export-btn" id="btn-export" onclick="exportSession()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
+                        Exportar
                     </button>
                 </div>
 
-                <div style="flex:1;"></div>
+                <div style="padding: 12px 20px 0;">
+                    <div class="session-info" id="session-info">
+                        Inicie uma sessão para começar.
+                    </div>
 
-                <div class="live-transcript-box">
-                    <div class="live-transcript-title">Transcrição em Tempo Real</div>
-                    <div class="live-transcript-text" id="live-transcript">
-                        <span style="color:var(--text-muted); font-style:italic;">Aguardando fala...</span>
+                    <div class="tab-bar">
+                        <button class="tab-btn active" id="tab-transcription"
+                            onclick="switchTab('transcription')">Transcrição Completa</button>
+                        <button class="tab-btn" id="tab-anamnesis" onclick="switchTab('anamnesis')">
+                            Anamnese em Tempo Real
+                            <span id="anamnesis-badge" class="tab-badge" style="display:none;"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="column-content">
+                    <div class="tab-content active" id="tab-content-transcription">
+                        <div class="empty-state" id="transcription-empty">A transcrição aparecerá aqui.</div>
+                        <div id="transcription-container" style="display:none;"></div>
+                    </div>
+
+                    <div class="tab-content" id="tab-content-anamnesis">
+                        <div class="generating-indicator" id="anamnesis-generating">
+                            <span class="spinner"></span> Gerando anamnese...
+                        </div>
+                        <div class="empty-state" id="anamnesis-empty">A anamnese será gerada aqui.</div>
+                        <div id="anamnesis-container" class="anamnesis-text" style="display:none;"></div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- RIGHT COLUMN: Fluxo de Consciência (IA) -->
-        <div class="column" id="col-right">
-            <div class="column-header">
-                <div class="column-title">Fluxo de Consciência (IA)</div>
+            <!-- CENTER COLUMN: Controle de Áudio -->
+            <div class="column" id="col-center">
+                <div class="column-header">
+                    <div class="column-title" id="audio-title">
+                        <span id="audio-status-icon">🎙️</span>
+                        Controle de Áudio
+                    </div>
+                    <span class="audio-status" id="audio-status">Pressione Iniciar para começar</span>
+                </div>
+
+                <div class="audio-section">
+                    <div style="width:100%; max-width:300px; text-align:left;">
+                        <label class="mic-selector-label">Microfone</label>
+                        <select class="mic-selector" id="mic-select">
+                            <option>Inicie a escuta para detectar microfones.</option>
+                        </select>
+                    </div>
+
+                    <div class="waveform-container">
+                        <canvas id="waveform-canvas"></canvas>
+                    </div>
+
+                    <div class="mic-controls">
+                        <button class="mic-btn idle" id="btn-record" onclick="toggleRecording()">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <line x1="12" x2="12" y1="19" y2="22"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div style="flex:1;"></div>
+
+                    <div class="live-transcript-box">
+                        <div class="live-transcript-title">Transcrição em Tempo Real</div>
+                        <div class="live-transcript-text" id="live-transcript">
+                            <span style="color:var(--text-muted); font-style:italic;">Aguardando fala...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="column-content" id="insights-container">
-                <div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>
+            <!-- RIGHT COLUMN: Fluxo de Consciência (IA) -->
+            <div class="column" id="col-right">
+                <div class="column-header">
+                    <div class="column-title">Fluxo de Consciência (IA)</div>
+                </div>
+
+                <div class="column-content" id="insights-container">
+                    <div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>
+                </div>
+
+                <div class="chat-section">
+                    <form class="chat-form" id="chat-form">
+                        <input type="text" class="chat-input" id="chat-input" placeholder="Pergunte algo à IA..."
+                            autocomplete="off">
+                        <button type="submit" class="chat-send">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
             </div>
 
-            <div class="chat-section">
-                <form class="chat-form" id="chat-form">
-                    <input type="text" class="chat-input" id="chat-input" placeholder="Pergunte algo à IA..." autocomplete="off">
-                    <button type="submit" class="chat-send">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </button>
-                </form>
-            </div>
-        </div>
-
-    </main>
+        </main>
 
     </div><!-- /content-wrapper -->
 
@@ -974,7 +1255,8 @@
             </div>
             <div class="modal-input-group">
                 <label>URL do IPagent (Backend)</label>
-                <input type="text" id="ipagent-url" value="http://127.0.0.1:5000" placeholder="Ex: http://localhost:5000 ou https://seu-tunel.trycloudflare.com">
+                <input type="text" id="ipagent-url" value="http://127.0.0.1:5000"
+                    placeholder="Ex: http://localhost:5000 ou https://seu-tunel.trycloudflare.com">
             </div>
             <div class="modal-input-group">
                 <label>Bearer Token (Opcional)</label>
@@ -992,10 +1274,13 @@
         <div class="log-panel-header" onclick="toggleLogPanel()">
             <span>📋 Logs <span class="log-count" id="log-count">0</span></span>
             <div style="display:flex; gap:6px; align-items:center;">
-                <label style="font-size:10px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:3px;" onclick="event.stopPropagation()">
+                <label
+                    style="font-size:10px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:3px;"
+                    onclick="event.stopPropagation()">
                     <input type="checkbox" id="log-verbose" style="width:12px;height:12px;"> Verbose
                 </label>
-                <button class="log-clear" onclick="event.stopPropagation(); copyLogs()" title="Copiar para colar no chat">📋 Copiar</button>
+                <button class="log-clear" onclick="event.stopPropagation(); copyLogs()"
+                    title="Copiar para colar no chat">📋 Copiar</button>
                 <button class="log-clear" onclick="event.stopPropagation(); exportLogs()">⬇ Exportar</button>
                 <button class="log-clear" onclick="event.stopPropagation(); clearLogs()">Limpar</button>
             </div>
@@ -1029,7 +1314,7 @@
             document.getElementById('fb-status-dot').style.background = 'var(--accent-green)';
             document.getElementById('fb-status-text').textContent = 'Firebase conectado';
             loadConsultations();
-        } catch(e) {
+        } catch (e) {
             document.getElementById('firebase-badge').classList.add('offline');
             document.getElementById('firebase-badge').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-red);display:inline-block;"></span> Firebase OFF';
             document.getElementById('fb-status-dot').style.background = 'var(--accent-red)';
@@ -1095,15 +1380,15 @@
         try {
             const saved = JSON.parse(localStorage.getItem('ipagent-logs') || '[]');
             saved.forEach(m => logHistory.push(m));
-        } catch(e) {}
+        } catch (e) { }
 
         function flog(msg, type = 'info') {
             const now = new Date();
-            const ts = now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            const ts = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const fullMsg = `[${ts}] [${type.toUpperCase()}] ${msg}`;
             logHistory.push(fullMsg);
             // Persist last 500 to localStorage
-            try { localStorage.setItem('ipagent-logs', JSON.stringify(logHistory.slice(-500))); } catch(e) {}
+            try { localStorage.setItem('ipagent-logs', JSON.stringify(logHistory.slice(-500))); } catch (e) { }
             // UI entry
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
@@ -1140,7 +1425,7 @@
             const blob = new Blob([text], { type: 'text/plain' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `frontend_logs_${new Date().toISOString().slice(0,16).replace(':','-')}.txt`;
+            a.download = `frontend_logs_${new Date().toISOString().slice(0, 16).replace(':', '-')}.txt`;
             a.click();
             flog(`Exportados ${logHistory.length} entradas`, 'success');
         }
@@ -1166,7 +1451,7 @@
                 await navigator.clipboard.writeText(text);
                 showToast('Logs copiados para clipboard!', 'success');
                 flog(`Copiados ${recent.length} entradas para clipboard`, 'success');
-            } catch(e) {
+            } catch (e) {
                 // Fallback
                 const ta = document.createElement('textarea');
                 ta.value = text; document.body.appendChild(ta);
@@ -1193,7 +1478,7 @@
                     flog(`✓ ${method} ${endpoint} [${res.status}]`, 'success');
                 }
                 return res;
-            } catch(e) {
+            } catch (e) {
                 flog(`✗ ${method} ${endpoint} — ${e.message}`, 'error');
                 throw e;
             }
@@ -1204,12 +1489,24 @@
         // ==========================================
         window.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            if (params.has('url')) baseUrl = params.get('url');
+            let urlSource = 'padrão';
+            if (params.has('url')) {
+                baseUrl = params.get('url');
+                urlSource = 'URL param';
+            } else if (localStorage.getItem('ipagent-url')) {
+                urlSource = 'localStorage';
+            }
             if (params.has('token')) bearerToken = params.get('token');
+            // Remove trailing slash
+            baseUrl = baseUrl.replace(/\/+$/, '');
             document.getElementById('ipagent-url').value = baseUrl;
             document.getElementById('ipagent-token').value = bearerToken;
-            flog(`Inicializando... Backend: ${baseUrl}`, 'info');
+            flog(`Inicializando... Backend: ${baseUrl} (fonte: ${urlSource})`, 'info');
             flog(`Firebase: ${isFirebaseReady ? 'Conectado ✓' : 'Offline ✗'}`, isFirebaseReady ? 'success' : 'warn');
+            // Warn if backend URL looks like the frontend itself
+            if (baseUrl.includes('vercel.app') || baseUrl.includes('netlify.app')) {
+                flog('⚠️ ATENÇÃO: Backend URL parece ser o próprio frontend! Configure nas ⚙️ Configurações.', 'error');
+            }
             checkStatus();
         });
 
@@ -1237,11 +1534,24 @@
         });
 
         function saveSettings() {
-            baseUrl = document.getElementById('ipagent-url').value.trim();
+            let newUrl = document.getElementById('ipagent-url').value.trim().replace(/\/+$/, '');
             bearerToken = document.getElementById('ipagent-token').value.trim();
+            // Validate: prevent saving frontend URL as backend
+            if (newUrl.includes('vercel.app') || newUrl.includes('netlify.app') || newUrl.includes('github.io')) {
+                showToast('⚠️ Essa URL parece ser do frontend, não do backend IPagent!', 'error');
+                flog(`⚠️ URL rejeitada (parece frontend): ${newUrl}`, 'error');
+                return;
+            }
+            if (!newUrl.startsWith('http')) {
+                showToast('URL deve começar com http:// ou https://', 'error');
+                return;
+            }
+            const oldUrl = baseUrl;
+            baseUrl = newUrl;
             localStorage.setItem('ipagent-url', baseUrl);
             localStorage.setItem('ipagent-token', bearerToken);
             document.getElementById('settings-modal').classList.remove('active');
+            flog(`🔧 Backend alterado: ${oldUrl} → ${baseUrl}`, 'info');
             checkStatus();
             showToast('Configurações salvas!', 'success');
         }
@@ -1308,7 +1618,7 @@
                     if (lastConnectionState !== 'http-err') flog(`🟡 /api/status retornou ${res.status}`, 'warn');
                     lastConnectionState = 'http-err';
                 }
-            } catch(e) {
+            } catch (e) {
                 statusDot.className = 'status-dot offline';
                 statusText.textContent = 'Servidor offline';
                 connectionRetries++;
@@ -1368,7 +1678,7 @@
                     sel.appendChild(o);
                 });
                 if (!mics.length) sel.innerHTML = '<option>Nenhum microfone</option>';
-            } catch(e) {}
+            } catch (e) { }
         }
 
         // ==========================================
@@ -1396,7 +1706,7 @@
                     apiFetch('/api/transcription/update', {
                         method: 'POST',
                         body: JSON.stringify({ text: final.trim() })
-                    }).catch(() => {});
+                    }).catch(() => { });
                     scheduleAutoSave();
                 }
                 if (interim) showLiveInterim(interim);
@@ -1405,7 +1715,7 @@
             speechRecognition.onerror = (e) => {
                 if (e.error !== 'no-speech' && e.error !== 'aborted') console.warn('Speech error:', e.error);
             };
-            speechRecognition.onend = () => { if (isRecording) try { speechRecognition.start(); } catch(e) {} };
+            speechRecognition.onend = () => { if (isRecording) try { speechRecognition.start(); } catch (e) { } };
             return true;
         }
 
@@ -1459,7 +1769,7 @@
                     }
                     fullCorrectedText += (data.corrected || text) + ' ';
                 }
-            } catch(e) { fullCorrectedText += text + ' '; }
+            } catch (e) { fullCorrectedText += text + ' '; }
             isProcessingCorrection = false;
             if (correctionQueue.length) setTimeout(processNextCorrection, 100);
         }
@@ -1506,7 +1816,7 @@
                 recordingStartTime = Date.now();
 
                 startSessionTimer();
-                apiFetch('/api/transcription/start', { method: 'POST' }).catch(() => {});
+                apiFetch('/api/transcription/start', { method: 'POST' }).catch(() => { });
                 flog('🎙️ Gravação iniciada', 'success');
                 startAnamnesisTimer();
                 startInsightsTimer();
@@ -1521,9 +1831,9 @@
                     mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
                     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
                     mediaRecorder.start(1000); // chunk every 1s
-                } catch(e) { console.warn('Mic/Recorder error:', e); }
+                } catch (e) { console.warn('Mic/Recorder error:', e); }
 
-                try { speechRecognition.start(); } catch(e) {}
+                try { speechRecognition.start(); } catch (e) { }
             } else {
                 btnRecord.className = 'mic-btn idle';
                 document.getElementById('audio-status').textContent = 'Salvando sessão...';
@@ -1548,14 +1858,14 @@
                         await uploadBytes(fileRef, audioBlob);
                         audioUrl = await getDownloadURL(fileRef);
                         showToast('Áudio salvo no Firebase!', 'success');
-                    } catch(e) { console.error('Audio upload error:', e); showToast('Erro ao salvar áudio', 'error'); }
+                    } catch (e) { console.error('Audio upload error:', e); showToast('Erro ao salvar áudio', 'error'); }
                 }
 
                 if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
                 generateAnamnesis();
                 flog('⏹️ Gravação encerrada. Salvando...', 'info');
                 await saveConsultation('completed', audioUrl, duration);
-                flog(`✅ Sessão salva (duração: ${Math.floor(duration/60)}m${(duration%60).toString().padStart(2,'0')}s)`, 'success');
+                flog(`✅ Sessão salva (duração: ${Math.floor(duration / 60)}m${(duration % 60).toString().padStart(2, '0')}s)`, 'success');
                 document.getElementById('audio-status').textContent = 'Sessão encerrada.';
                 document.getElementById('audio-status-icon').textContent = '🎙️';
                 loadConsultations();
@@ -1618,7 +1928,7 @@
                         badge.style.display = 'inline-block';
                     }
                 }
-            } catch(e) { console.warn('Anamnese error:', e); }
+            } catch (e) { console.warn('Anamnese error:', e); }
             finally { gen.style.display = 'none'; }
         }
 
@@ -1671,13 +1981,13 @@
                     if (done) break;
                     for (const line of decoder.decode(value).split('\n')) {
                         if (line.startsWith('data: ')) {
-                            try { const j = JSON.parse(line.slice(6)); if (j.token) { full += j.token; textEl.textContent = full; } } catch {}
+                            try { const j = JSON.parse(line.slice(6)); if (j.token) { full += j.token; textEl.textContent = full; } } catch { }
                         }
                     }
                 }
                 const sp = card.querySelector('.spinner'); if (sp) sp.remove();
                 insightsList.push(full);
-            } catch(e) { console.warn('Insight error:', e); }
+            } catch (e) { console.warn('Insight error:', e); }
             finally { isGeneratingInsight = false; }
         }
 
@@ -1714,11 +2024,11 @@
                     if (done) break;
                     for (const line of decoder.decode(value).split('\n')) {
                         if (line.startsWith('data: ')) {
-                            try { const j = JSON.parse(line.slice(6)); if (j.token) { full += j.token; textEl.textContent = full; } } catch {}
+                            try { const j = JSON.parse(line.slice(6)); if (j.token) { full += j.token; textEl.textContent = full; } } catch { }
                         }
                     }
                 }
-            } catch(e) { console.error('Chat error:', e); }
+            } catch (e) { console.error('Chat error:', e); }
             chatInput.disabled = false;
             chatInput.focus();
         });
@@ -1731,7 +2041,7 @@
             const blob = new Blob([text], { type: 'text/plain' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `consulta_${new Date().toISOString().slice(0,10)}.txt`;
+            a.download = `consulta_${new Date().toISOString().slice(0, 10)}.txt`;
             a.click();
         }
 
@@ -1751,7 +2061,7 @@
                     const ref = await addDoc(collection(db, 'consultations'), data);
                     currentDocId = ref.id;
                 }
-            } catch(e) { console.error('Firebase save error:', e); }
+            } catch (e) { console.error('Firebase save error:', e); }
         }
 
         function scheduleAutoSave() {
@@ -1785,22 +2095,22 @@
                     const id = ds.id;
                     const date = d.createdAt ? d.createdAt.toDate() : new Date();
                     const preview = (d.rawTranscript || '').substring(0, 80) || 'Sem transcrição';
-                    const dur = d.duration ? `${Math.floor(d.duration/60)}m${(d.duration%60).toString().padStart(2,'0')}s` : '';
+                    const dur = d.duration ? `${Math.floor(d.duration / 60)}m${(d.duration % 60).toString().padStart(2, '0')}s` : '';
                     const st = d.status || 'paused';
                     const card = document.createElement('div');
                     card.className = `history-card${id === currentDocId ? ' active' : ''}`;
                     card.onclick = () => loadConsultation(id);
                     card.innerHTML = `
                         <div class="hc-date">
-                            <span>${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>
-                            <span class="hc-status ${st}">${st}${dur ? ' · '+dur : ''}</span>
+                            <span>${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span class="hc-status ${st}">${st}${dur ? ' · ' + dur : ''}</span>
                         </div>
-                        <div class="hc-preview">${preview}${(d.rawTranscript||'').length>80?'...':''}</div>
-                        ${d.audioUrl ? '<div class="hc-audio"><audio controls preload="none" src="'+d.audioUrl+'"></audio></div>' : ''}
+                        <div class="hc-preview">${preview}${(d.rawTranscript || '').length > 80 ? '...' : ''}</div>
+                        ${d.audioUrl ? '<div class="hc-audio"><audio controls preload="none" src="' + d.audioUrl + '"></audio></div>' : ''}
                     `;
                     list.appendChild(card);
                 });
-            } catch(e) { console.error('Load history error:', e); }
+            } catch (e) { console.error('Load history error:', e); }
         }
 
         async function loadConsultation(docId) {
@@ -1823,15 +2133,15 @@
                 const anamE = document.getElementById('anamnesis-empty');
                 if (currentAnamnesis) {
                     anamE.style.display = 'none'; anamC.style.display = 'block';
-                    anamC.innerHTML = currentAnamnesis.replace(/\[([^\]]+)\]/g,'<strong style="color:var(--accent-indigo);">[$1]</strong>').replace(/não informado/gi,'<span style="color:var(--text-muted);font-style:italic;">não informado</span>').replace(/\n/g,'<br>');
+                    anamC.innerHTML = currentAnamnesis.replace(/\[([^\]]+)\]/g, '<strong style="color:var(--accent-indigo);">[$1]</strong>').replace(/não informado/gi, '<span style="color:var(--text-muted);font-style:italic;">não informado</span>').replace(/\n/g, '<br>');
                 } else { anamE.style.display = 'block'; anamC.style.display = 'none'; }
                 // Session info
                 const date = found.createdAt ? found.createdAt.toDate() : new Date();
-                const dur = found.duration ? ` | Duração: ${Math.floor(found.duration/60)}m${(found.duration%60).toString().padStart(2,'0')}s` : '';
+                const dur = found.duration ? ` | Duração: ${Math.floor(found.duration / 60)}m${(found.duration % 60).toString().padStart(2, '0')}s` : '';
                 document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}`;
                 showToast('Consulta carregada', 'success');
                 loadConsultations();
-            } catch(e) { console.error('Load consultation error:', e); showToast('Erro ao carregar', 'error'); }
+            } catch (e) { console.error('Load consultation error:', e); showToast('Erro ao carregar', 'error'); }
         }
 
         function newConsultation() {
