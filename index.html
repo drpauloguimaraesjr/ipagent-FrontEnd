@@ -995,6 +995,7 @@
                 <label style="font-size:10px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:3px;" onclick="event.stopPropagation()">
                     <input type="checkbox" id="log-verbose" style="width:12px;height:12px;"> Verbose
                 </label>
+                <button class="log-clear" onclick="event.stopPropagation(); copyLogs()" title="Copiar para colar no chat">📋 Copiar</button>
                 <button class="log-clear" onclick="event.stopPropagation(); exportLogs()">⬇ Exportar</button>
                 <button class="log-clear" onclick="event.stopPropagation(); clearLogs()">Limpar</button>
             </div>
@@ -1087,14 +1088,22 @@
         const logCountEl = document.getElementById('log-count');
         let logErrorCount = 0;
         let connectionRetries = 0;
-        const LOG_MAX = 2000; // suficiente para 1h+ de consulta
-        const logHistory = []; // full history for export
+        const LOG_MAX = 2000;
+        const logHistory = [];
+
+        // Restaurar logs do localStorage (sobrevive recarregamento)
+        try {
+            const saved = JSON.parse(localStorage.getItem('ipagent-logs') || '[]');
+            saved.forEach(m => logHistory.push(m));
+        } catch(e) {}
 
         function flog(msg, type = 'info') {
             const now = new Date();
             const ts = now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
             const fullMsg = `[${ts}] [${type.toUpperCase()}] ${msg}`;
             logHistory.push(fullMsg);
+            // Persist last 500 to localStorage
+            try { localStorage.setItem('ipagent-logs', JSON.stringify(logHistory.slice(-500))); } catch(e) {}
             // UI entry
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
@@ -1134,6 +1143,37 @@
             a.download = `frontend_logs_${new Date().toISOString().slice(0,16).replace(':','-')}.txt`;
             a.click();
             flog(`Exportados ${logHistory.length} entradas`, 'success');
+        }
+
+        async function copyLogs() {
+            // Summary header so the AI understands the context
+            const errors = logHistory.filter(l => l.includes('[ERROR]') || l.includes('[WARN]'));
+            const total = logHistory.length;
+            const header = [
+                `=== IPagent Frontend Logs ===${' '}`,
+                `Data: ${new Date().toLocaleString('pt-BR')}`,
+                `Backend: ${baseUrl}`,
+                `Firebase: ${isFirebaseReady ? 'OK' : 'OFF'}`,
+                `Gravando: ${isRecording ? 'SIM' : 'NAO'}`,
+                `Total: ${total} entradas | Erros/Warns: ${errors.length}`,
+                `=============================`,
+                ''
+            ].join('\n');
+            // Only copy last 100 entries + all errors for brevity
+            const recent = logHistory.slice(-100);
+            const text = header + recent.join('\n');
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast('Logs copiados para clipboard!', 'success');
+                flog(`Copiados ${recent.length} entradas para clipboard`, 'success');
+            } catch(e) {
+                // Fallback
+                const ta = document.createElement('textarea');
+                ta.value = text; document.body.appendChild(ta);
+                ta.select(); document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('Logs copiados!', 'success');
+            }
         }
 
         // Rotas "silenciosas" — só logam em modo verbose
@@ -1826,6 +1866,7 @@
         window.toggleLogPanel = toggleLogPanel;
         window.clearLogs = clearLogs;
         window.exportLogs = exportLogs;
+        window.copyLogs = copyLogs;
     </script>
 
 </body>
