@@ -1,4 +1,3 @@
-tunel
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -165,6 +164,7 @@ tunel
             text-overflow: ellipsis;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
         }
 
@@ -1387,8 +1387,10 @@ tunel
             const ts = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const fullMsg = `[${ts}] [${type.toUpperCase()}] ${msg}`;
             logHistory.push(fullMsg);
-            // Persist last 500 to localStorage
-            try { localStorage.setItem('ipagent-logs', JSON.stringify(logHistory.slice(-500))); } catch (e) { }
+            // Persist to localStorage every 10 entries (throttled)
+            if (logHistory.length % 10 === 0) {
+                try { localStorage.setItem('ipagent-logs', JSON.stringify(logHistory.slice(-500))); } catch (e) { }
+            }
             // UI entry
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
@@ -1622,13 +1624,15 @@ tunel
                 statusDot.className = 'status-dot offline';
                 statusText.textContent = 'Servidor offline';
                 connectionRetries++;
+                // Detect CORS vs network errors
+                const errType = e.message?.includes('Failed to fetch') ? 'rede/CORS' : e.message;
                 if (lastConnectionState !== 'offline' || connectionRetries % 5 === 0) {
-                    flog(`🔴 Conexão caiu — ${e.message} (tentativa #${connectionRetries})`, 'error');
+                    flog(`🔴 Conexão caiu — ${errType} (tentativa #${connectionRetries})`, 'error');
                 }
                 lastConnectionState = 'offline';
             }
         }
-        setInterval(checkStatus, 10000); // check every 10s (was 15s)
+        setInterval(checkStatus, 10000);
 
         // ==========================================
         // WAVEFORM
@@ -1713,7 +1717,8 @@ tunel
             };
 
             speechRecognition.onerror = (e) => {
-                if (e.error !== 'no-speech' && e.error !== 'aborted') console.warn('Speech error:', e.error);
+                if (e.error === 'no-speech' || e.error === 'aborted') return;
+                flog(`🎙️ Speech error: ${e.error}`, 'warn');
             };
             speechRecognition.onend = () => { if (isRecording) try { speechRecognition.start(); } catch (e) { } };
             return true;
@@ -1831,7 +1836,7 @@ tunel
                     mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
                     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
                     mediaRecorder.start(1000); // chunk every 1s
-                } catch (e) { console.warn('Mic/Recorder error:', e); }
+                } catch (e) { flog(`❌ Mic/Recorder: ${e.message}`, 'error'); }
 
                 try { speechRecognition.start(); } catch (e) { }
             } else {
@@ -1858,7 +1863,7 @@ tunel
                         await uploadBytes(fileRef, audioBlob);
                         audioUrl = await getDownloadURL(fileRef);
                         showToast('Áudio salvo no Firebase!', 'success');
-                    } catch (e) { console.error('Audio upload error:', e); showToast('Erro ao salvar áudio', 'error'); }
+                    } catch (e) { flog(`❌ Upload áudio falhou: ${e.message}`, 'error'); showToast('Erro ao salvar áudio', 'error'); }
                 }
 
                 if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
@@ -1899,6 +1904,7 @@ tunel
         // ==========================================
         function startAnamnesisTimer() {
             anamnesisTimer = setInterval(() => {
+                if (lastConnectionState !== 'online') return; // skip if backend offline
                 const len = transcriptionContainer.innerText.length;
                 if (len - lastTranscriptLength > 50) { generateAnamnesis(); lastTranscriptLength = len; }
             }, 30000);
@@ -1946,6 +1952,7 @@ tunel
 
         function startInsightsTimer() {
             insightsTimerRef = setInterval(() => {
+                if (lastConnectionState !== 'online') return; // skip if backend offline
                 if (transcriptionContainer.innerText.length > 30 && !isGeneratingInsight) generateInsight();
             }, 20000);
         }
@@ -2066,7 +2073,12 @@ tunel
 
         function scheduleAutoSave() {
             if (autoSaveTimer) clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(() => { if (fullRawText.trim()) saveConsultation(isRecording ? 'recording' : 'paused'); }, 5000);
+            autoSaveTimer = setTimeout(() => {
+                if (fullRawText.trim()) {
+                    saveConsultation(isRecording ? 'recording' : 'paused');
+                    if (isVerbose()) flog('💾 Auto-save realizado', 'info');
+                }
+            }, 5000);
         }
 
         async function manualSave() {
