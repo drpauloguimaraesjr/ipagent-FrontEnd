@@ -1083,10 +1083,16 @@
 
         async function checkStatus() {
             try {
-                const res = await fetch(`${baseUrl}/`, { headers: getHeaders() });
+                const res = await fetch(`${baseUrl}/api/status`, { headers: getHeaders() });
                 if (res.ok) {
-                    statusDot.className = 'status-dot online';
-                    statusText.textContent = 'IA Online';
+                    const data = await res.json();
+                    if (data.agent?.available) {
+                        statusDot.className = 'status-dot online';
+                        statusText.textContent = 'IA Online';
+                    } else {
+                        statusDot.className = 'status-dot';
+                        statusText.textContent = 'IA Offline';
+                    }
                 } else {
                     statusDot.className = 'status-dot';
                     statusText.textContent = 'IA Offline';
