@@ -991,7 +991,13 @@
     <div class="log-panel" id="log-panel">
         <div class="log-panel-header" onclick="toggleLogPanel()">
             <span>📋 Logs <span class="log-count" id="log-count">0</span></span>
-            <button class="log-clear" onclick="event.stopPropagation(); clearLogs()">Limpar</button>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <label style="font-size:10px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:3px;" onclick="event.stopPropagation()">
+                    <input type="checkbox" id="log-verbose" style="width:12px;height:12px;"> Verbose
+                </label>
+                <button class="log-clear" onclick="event.stopPropagation(); exportLogs()">⬇ Exportar</button>
+                <button class="log-clear" onclick="event.stopPropagation(); clearLogs()">Limpar</button>
+            </div>
         </div>
         <div class="log-panel-body" id="log-body"></div>
     </div>
@@ -1075,30 +1081,35 @@
         const toastEl = document.getElementById('toast');
 
         // ==========================================
-        // LOG SYSTEM
+        // LOG SYSTEM (otimizado para consultas de 1h+)
         // ==========================================
         const logBody = document.getElementById('log-body');
         const logCountEl = document.getElementById('log-count');
         let logErrorCount = 0;
         let connectionRetries = 0;
+        const LOG_MAX = 2000; // suficiente para 1h+ de consulta
+        const logHistory = []; // full history for export
 
         function flog(msg, type = 'info') {
             const now = new Date();
             const ts = now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            const fullMsg = `[${ts}] [${type.toUpperCase()}] ${msg}`;
+            logHistory.push(fullMsg);
+            // UI entry
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
             entry.innerHTML = `<span class="log-time">[${ts}]</span>${msg}`;
             logBody.appendChild(entry);
             logBody.scrollTop = logBody.scrollHeight;
-            // Keep max 200 entries
-            while (logBody.children.length > 200) logBody.removeChild(logBody.firstChild);
+            while (logBody.children.length > LOG_MAX) logBody.removeChild(logBody.firstChild);
             if (type === 'error' || type === 'warn') {
                 logErrorCount++;
                 logCountEl.textContent = logErrorCount;
                 logCountEl.style.display = 'inline-block';
             }
-            console.log(`[FE-${type.toUpperCase()}] ${msg}`);
         }
+
+        function isVerbose() { return document.getElementById('log-verbose')?.checked; }
 
         function toggleLogPanel() {
             document.getElementById('log-panel').classList.toggle('open');
@@ -1115,17 +1126,31 @@
             flog('Logs limpos', 'info');
         }
 
-        // Wrapped fetch with logging
+        function exportLogs() {
+            const text = logHistory.join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `frontend_logs_${new Date().toISOString().slice(0,16).replace(':','-')}.txt`;
+            a.click();
+            flog(`Exportados ${logHistory.length} entradas`, 'success');
+        }
+
+        // Rotas "silenciosas" — só logam em modo verbose
+        const QUIET_ROUTES = ['/api/transcription/update'];
+
+        // Wrapped fetch with smart logging
         async function apiFetch(endpoint, options = {}) {
             const url = `${baseUrl}${endpoint}`;
             const method = options.method || 'GET';
-            flog(`→ ${method} ${endpoint}`, 'info');
+            const isQuiet = QUIET_ROUTES.includes(endpoint);
+            if (!isQuiet || isVerbose()) flog(`→ ${method} ${endpoint}`, 'info');
             try {
                 const res = await fetch(url, { ...options, headers: { ...getHeaders(), ...(options.headers || {}) } });
-                if (res.ok) {
-                    flog(`✓ ${method} ${endpoint} [${res.status}]`, 'success');
-                } else {
+                if (!res.ok) {
                     flog(`✗ ${method} ${endpoint} [${res.status}] ${res.statusText}`, 'warn');
+                } else if (!isQuiet || isVerbose()) {
+                    flog(`✓ ${method} ${endpoint} [${res.status}]`, 'success');
                 }
                 return res;
             } catch(e) {
@@ -1800,6 +1825,7 @@
         window.loadConsultation = loadConsultation;
         window.toggleLogPanel = toggleLogPanel;
         window.clearLogs = clearLogs;
+        window.exportLogs = exportLogs;
     </script>
 
 </body>
