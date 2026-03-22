@@ -46,9 +46,121 @@
             color: var(--text-primary);
             height: 100vh;
             display: flex;
+            flex-direction: row;
+            overflow: hidden;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            display: flex;
             flex-direction: column;
             overflow: hidden;
         }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sidebar-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-new-btn {
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            background: var(--accent-blue-glow);
+            color: var(--accent-blue);
+            border: 1px solid rgba(68, 147, 248, 0.3);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+        .sidebar-new-btn:hover { background: rgba(68, 147, 248, 0.25); }
+        .sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .sidebar-list::-webkit-scrollbar { width: 4px; }
+        .sidebar-list::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .history-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .history-card:hover { background: var(--bg-card-hover); border-color: var(--border-light); }
+        .history-card.active { border-color: var(--accent-blue); background: var(--accent-blue-glow); }
+        .history-card .hc-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .history-card .hc-preview {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .hc-status {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .hc-status.recording { background: var(--accent-red-glow); color: var(--accent-red); }
+        .hc-status.paused { background: rgba(227, 179, 65, 0.15); color: var(--accent-amber); }
+        .hc-status.completed { background: var(--accent-green-glow); color: var(--accent-green); }
+        .hc-audio { margin-top: 8px; }
+        .hc-audio audio { width: 100%; height: 32px; }
+        .sidebar-empty {
+            text-align: center;
+            padding: 40px 16px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .sidebar-empty span { font-size: 28px; display: block; margin-bottom: 8px; }
+        .sidebar-footer {
+            padding: 10px 16px;
+            border-top: 1px solid var(--border);
+            font-size: 10px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        @media (max-width: 1100px) { .sidebar { display: none; } }
 
         /* ===== HEADER (Top Bar) ===== */
         header {
@@ -623,6 +735,24 @@
 
 <body>
 
+    <!-- ===== SIDEBAR: Histórico ===== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>📋 Consultas</h2>
+            <button class="sidebar-new-btn" onclick="newConsultation()">+ Nova</button>
+        </div>
+        <div class="sidebar-list" id="history-list">
+            <div class="sidebar-empty" id="sidebar-empty"><span>📂</span>Carregando consultas...</div>
+        </div>
+        <div class="sidebar-footer" id="sidebar-footer">
+            <span id="fb-status-dot" style="width:6px;height:6px;border-radius:50%;background:var(--accent-amber);"></span>
+            <span id="fb-status-text">Conectando Firebase...</span>
+        </div>
+    </aside>
+
+    <!-- ===== CONTENT WRAPPER ===== -->
+    <div class="content-wrapper">
+
     <!-- ===== HEADER ===== -->
     <header>
         <div class="header-left">
@@ -769,6 +899,8 @@
 
     </main>
 
+    </div><!-- /content-wrapper -->
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal-overlay">
         <div class="modal">
@@ -795,6 +927,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBFkjNEZt7Mk0XaElaln5FpwCyk3NEP9Sw",
@@ -806,15 +939,21 @@
             measurementId: "G-W1R87GELW7"
         };
 
-        let db, isFirebaseReady = false;
+        let db, storage, isFirebaseReady = false;
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
+            storage = getStorage(app);
             isFirebaseReady = true;
             document.getElementById('firebase-badge').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);display:inline-block;"></span> Firebase';
+            document.getElementById('fb-status-dot').style.background = 'var(--accent-green)';
+            document.getElementById('fb-status-text').textContent = 'Firebase conectado';
+            loadConsultations();
         } catch(e) {
             document.getElementById('firebase-badge').classList.add('offline');
             document.getElementById('firebase-badge').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-red);display:inline-block;"></span> Firebase OFF';
+            document.getElementById('fb-status-dot').style.background = 'var(--accent-red)';
+            document.getElementById('fb-status-text').textContent = 'Firebase erro';
         }
 
         // ==========================================
@@ -840,6 +979,9 @@
         let fullRawText = '';
         let fullCorrectedText = '';
         let currentAnamnesis = '';
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordingStartTime = null;
 
         // Base URL (from settings or URL params)
         let baseUrl = localStorage.getItem('ipagent-url') || 'http://127.0.0.1:5000';
@@ -1138,6 +1280,8 @@
                 fullRawText = ''; fullCorrectedText = ''; currentAnamnesis = '';
                 lastTranscriptLength = 0; insightsList = [];
                 insightsContainer.innerHTML = '<div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>';
+                currentDocId = null;
+                recordingStartTime = Date.now();
 
                 startSessionTimer();
                 fetch(`${baseUrl}/api/transcription/start`, { method: 'POST', headers: getHeaders() }).catch(() => {});
@@ -1148,18 +1292,48 @@
                     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     initWaveform(mediaStream);
                     enumerateMicrophones();
-                } catch(e) {}
+
+                    // Start MediaRecorder for audio capture
+                    audioChunks = [];
+                    mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+                    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+                    mediaRecorder.start(1000); // chunk every 1s
+                } catch(e) { console.warn('Mic/Recorder error:', e); }
 
                 try { speechRecognition.start(); } catch(e) {}
             } else {
                 btnRecord.className = 'mic-btn idle';
-                document.getElementById('audio-status').textContent = 'Sessão encerrada.';
-                document.getElementById('audio-status-icon').textContent = '🎙️';
+                document.getElementById('audio-status').textContent = 'Salvando sessão...';
+                document.getElementById('audio-status-icon').textContent = '💾';
                 stopSessionTimer(); stopAnamnesisTimer(); stopInsightsTimer();
                 if (speechRecognition) speechRecognition.stop();
+
+                // Stop MediaRecorder and upload audio
+                const duration = recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0;
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    // Wait for final data
+                    await new Promise(r => { mediaRecorder.onstop = r; });
+                }
+
+                let audioUrl = null;
+                if (audioChunks.length > 0 && isFirebaseReady) {
+                    try {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const fileName = `consultations/${Date.now()}_audio.webm`;
+                        const fileRef = storageRef(storage, fileName);
+                        await uploadBytes(fileRef, audioBlob);
+                        audioUrl = await getDownloadURL(fileRef);
+                        showToast('Áudio salvo no Firebase!', 'success');
+                    } catch(e) { console.error('Audio upload error:', e); showToast('Erro ao salvar áudio', 'error'); }
+                }
+
                 if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
                 generateAnamnesis();
-                saveConsultation('completed');
+                await saveConsultation('completed', audioUrl, duration);
+                document.getElementById('audio-status').textContent = 'Sessão encerrada.';
+                document.getElementById('audio-status-icon').textContent = '🎙️';
+                loadConsultations();
             }
         }
 
@@ -1339,9 +1513,11 @@
         // ==========================================
         // FIREBASE: save/load
         // ==========================================
-        async function saveConsultation(status = 'recording') {
+        async function saveConsultation(status = 'recording', audioUrl = null, duration = 0) {
             if (!isFirebaseReady || (!fullRawText.trim() && !currentAnamnesis)) return;
             const data = { rawTranscript: fullRawText, correctedTranscript: fullCorrectedText, anamnesis: currentAnamnesis, status, updatedAt: serverTimestamp() };
+            if (audioUrl) data.audioUrl = audioUrl;
+            if (duration) data.duration = duration;
             try {
                 if (currentDocId) {
                     await updateDoc(doc(db, 'consultations', currentDocId), data);
@@ -1362,6 +1538,93 @@
             if (!fullRawText.trim() && !currentAnamnesis) { showToast('Nada para salvar', 'info'); return; }
             await saveConsultation(currentAnamnesis ? 'completed' : 'paused');
             showToast('Salvo no Firebase!', 'success');
+            loadConsultations();
+        }
+
+        // ==========================================
+        // CONSULTATION HISTORY
+        // ==========================================
+        async function loadConsultations() {
+            if (!isFirebaseReady) return;
+            try {
+                const q = query(collection(db, 'consultations'), orderBy('createdAt', 'desc'));
+                const snap = await getDocs(q);
+                const list = document.getElementById('history-list');
+                list.innerHTML = '';
+                if (snap.empty) {
+                    list.innerHTML = '<div class="sidebar-empty"><span>📂</span>Nenhuma consulta salva.<br><small>Inicie uma sessão para começar.</small></div>';
+                    return;
+                }
+                snap.forEach(ds => {
+                    const d = ds.data();
+                    const id = ds.id;
+                    const date = d.createdAt ? d.createdAt.toDate() : new Date();
+                    const preview = (d.rawTranscript || '').substring(0, 80) || 'Sem transcrição';
+                    const dur = d.duration ? `${Math.floor(d.duration/60)}m${(d.duration%60).toString().padStart(2,'0')}s` : '';
+                    const st = d.status || 'paused';
+                    const card = document.createElement('div');
+                    card.className = `history-card${id === currentDocId ? ' active' : ''}`;
+                    card.onclick = () => loadConsultation(id);
+                    card.innerHTML = `
+                        <div class="hc-date">
+                            <span>${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>
+                            <span class="hc-status ${st}">${st}${dur ? ' · '+dur : ''}</span>
+                        </div>
+                        <div class="hc-preview">${preview}${(d.rawTranscript||'').length>80?'...':''}</div>
+                        ${d.audioUrl ? '<div class="hc-audio"><audio controls preload="none" src="'+d.audioUrl+'"></audio></div>' : ''}
+                    `;
+                    list.appendChild(card);
+                });
+            } catch(e) { console.error('Load history error:', e); }
+        }
+
+        async function loadConsultation(docId) {
+            if (!isFirebaseReady) return;
+            if (isRecording) { showToast('Pare a gravação antes de trocar', 'info'); return; }
+            try {
+                const snap = await getDocs(query(collection(db, 'consultations')));
+                let found = null;
+                snap.forEach(d => { if (d.id === docId) found = d.data(); });
+                if (!found) { showToast('Consulta não encontrada', 'error'); return; }
+                currentDocId = docId;
+                fullRawText = found.rawTranscript || '';
+                fullCorrectedText = found.correctedTranscript || '';
+                currentAnamnesis = found.anamnesis || '';
+                // Populate left column
+                transcriptionEmpty.style.display = fullRawText ? 'none' : 'block';
+                transcriptionContainer.style.display = fullRawText ? 'block' : 'none';
+                transcriptionContainer.innerHTML = fullRawText ? `<span class="transcript-segment">${fullRawText}</span>` : '';
+                const anamC = document.getElementById('anamnesis-container');
+                const anamE = document.getElementById('anamnesis-empty');
+                if (currentAnamnesis) {
+                    anamE.style.display = 'none'; anamC.style.display = 'block';
+                    anamC.innerHTML = currentAnamnesis.replace(/\[([^\]]+)\]/g,'<strong style="color:var(--accent-indigo);">[$1]</strong>').replace(/não informado/gi,'<span style="color:var(--text-muted);font-style:italic;">não informado</span>').replace(/\n/g,'<br>');
+                } else { anamE.style.display = 'block'; anamC.style.display = 'none'; }
+                // Session info
+                const date = found.createdAt ? found.createdAt.toDate() : new Date();
+                const dur = found.duration ? ` | Duração: ${Math.floor(found.duration/60)}m${(found.duration%60).toString().padStart(2,'0')}s` : '';
+                document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}`;
+                showToast('Consulta carregada', 'success');
+                loadConsultations();
+            } catch(e) { console.error('Load consultation error:', e); showToast('Erro ao carregar', 'error'); }
+        }
+
+        function newConsultation() {
+            if (isRecording) { showToast('Pare a gravação antes', 'info'); return; }
+            if (currentDocId && fullRawText.trim()) saveConsultation('paused');
+            currentDocId = null;
+            fullRawText = ''; fullCorrectedText = ''; currentAnamnesis = '';
+            transcriptionContainer.innerHTML = '';
+            transcriptionEmpty.style.display = 'block';
+            transcriptionContainer.style.display = 'none';
+            document.getElementById('anamnesis-container').style.display = 'none';
+            document.getElementById('anamnesis-empty').style.display = 'block';
+            document.getElementById('session-info').textContent = 'Inicie uma sessão para começar.';
+            document.getElementById('session-timer').textContent = '00:00';
+            liveTranscript.innerHTML = '<span style="color:var(--text-muted); font-style:italic;">Aguardando fala...</span>';
+            insightsContainer.innerHTML = '<div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>';
+            showToast('Nova consulta', 'info');
+            loadConsultations();
         }
 
         // ==========================================
@@ -1373,6 +1636,8 @@
         window.manualSave = manualSave;
         window.exportSession = exportSession;
         window.saveSettings = saveSettings;
+        window.newConsultation = newConsultation;
+        window.loadConsultation = loadConsultation;
     </script>
 
 </body>
