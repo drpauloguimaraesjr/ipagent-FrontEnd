@@ -1,727 +1,800 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPagent - Prontuário Inteligente Integrado</title>
-    <!-- Modern Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <title>IPagent — Assistente Médico com IA (Frontend Client)</title>
+    <meta name="description" content="Cliente frontend do IPagent para transcrição médica ao vivo com correção, anamnese em tempo real e fluxo de consciência IA.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        
         :root {
-            /* Premium Dark Theme */
-            --bg-color: #0b0e14;
-            --panel-bg: rgba(22, 27, 34, 0.4);
-            --panel-border: rgba(255, 255, 255, 0.06);
-            --panel-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --primary-glow: rgba(59, 130, 246, 0.4);
-            
-            --danger: #ef4444;
-            --danger-hover: #dc2626;
-            --danger-glow: rgba(239, 68, 68, 0.4);
-            
-            --success: #10b981;
-            --success-hover: #059669;
-            --success-glow: rgba(16, 185, 129, 0.4);
-
-            --amber: #f59e0b;
-            --amber-glow: rgba(245, 158, 11, 0.4);
-
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --text-highlight: #e2e8f0;
-            
-            --radius-lg: 20px;
-            --radius-md: 12px;
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #1c2333;
+            --bg-card-hover: #222d3f;
+            --bg-input: #0d1117;
+            --border: #30363d;
+            --border-light: #3d4450;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #4493f8;
+            --accent-blue-hover: #3b82f6;
+            --accent-blue-glow: rgba(68, 147, 248, 0.15);
+            --accent-indigo: #8b5cf6;
+            --accent-teal: #2dd4bf;
+            --accent-teal-glow: rgba(45, 212, 191, 0.15);
+            --accent-red: #f85149;
+            --accent-red-glow: rgba(248, 81, 73, 0.15);
+            --accent-amber: #e3b341;
+            --accent-green: #3fb950;
+            --accent-green-glow: rgba(63, 185, 80, 0.15);
+            --radius: 12px;
             --radius-sm: 8px;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+            --shadow: 0 4px 24px rgba(0,0,0,0.4);
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
-            background-attachment: fixed;
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: row;
-            padding: 0;
-        }
-
-        /* Glassmorphism utility */
-        .glass {
-            background: var(--panel-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--panel-border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--panel-shadow);
-        }
-
-        /* ===== SIDEBAR: Histórico de Consultas ===== */
-        .sidebar {
-            width: 300px;
-            min-width: 300px;
-            background: rgba(10, 13, 18, 0.95);
-            border-right: 1px solid var(--panel-border);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            position: sticky;
-            top: 0;
-            transition: transform 0.3s ease;
-            z-index: 100;
-        }
-
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--panel-border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .sidebar-header h2 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-highlight);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .sidebar-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .sidebar-btn {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: var(--text-muted);
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: 'Inter', sans-serif;
-        }
-        .sidebar-btn:hover {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary);
-        }
-
-        .sidebar-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-        }
-
-        .sidebar-list::-webkit-scrollbar { width: 4px; }
-        .sidebar-list::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
-
-        .consultation-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: var(--radius-sm);
-            padding: 14px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        .consultation-card:hover {
-            background: rgba(255,255,255,0.06);
-            border-color: rgba(255,255,255,0.12);
-            transform: translateX(4px);
-        }
-        .consultation-card.active {
-            border-color: var(--primary);
-            background: rgba(59, 130, 246, 0.08);
-        }
-
-        .consultation-card .cc-date {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .consultation-card .cc-preview {
-            font-size: 13px;
-            color: var(--text-highlight);
-            line-height: 1.4;
             overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
         }
 
-        .cc-status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .cc-status-dot.recording { background: var(--danger); animation: pulse-danger 2s infinite; }
-        .cc-status-dot.paused { background: var(--amber); }
-        .cc-status-dot.completed { background: var(--success); }
-
-        .sidebar-empty {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-muted);
-            font-size: 13px;
-        }
-        .sidebar-empty span { font-size: 32px; display: block; margin-bottom: 12px; }
-
-        .firebase-status {
-            padding: 12px 20px;
-            border-top: 1px solid var(--panel-border);
+        /* ===== HEADER (Top Bar) ===== */
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 24px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 11px;
-            color: var(--text-muted);
+            justify-content: space-between;
+            gap: 16px;
+            min-height: 52px;
         }
-        .firebase-status .dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--text-muted);
-        }
-        .firebase-status .dot.online { background: var(--success); box-shadow: 0 0 6px var(--success-glow); }
 
-        /* ===== MAIN CONTENT ===== */
-        .main-content {
-            flex: 1;
+        .header-left {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            padding: 40px 20px;
-            overflow-y: auto;
-            height: 100vh;
+            gap: 12px;
         }
 
-        .container {
-            width: 100%;
-            max-width: 1200px;
+        .header-logo {
+            width: 28px; height: 28px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .header-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .header-center {
             display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        /* Header Section */
-        .header {
-            text-align: center;
-            margin-bottom: 16px;
-            animation: fadeInDown 0.8s ease forwards;
-        }
-
-        .header h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 36px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
-        }
-
-        .header p {
-            color: var(--text-muted);
-            font-size: 16px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Settings Bar */
-        .settings-bar {
-            display: flex;
-            flex-wrap: wrap;
             align-items: center;
             gap: 16px;
-            padding: 16px 24px;
-            transition: all 0.3s ease;
-            animation: fadeIn 1s ease forwards;
-        }
-        
-        .settings-bar:hover {
-            border-color: rgba(255,255,255,0.15);
         }
 
-        .input-group {
+        .clock {
+            font-size: 13px;
+            color: var(--text-secondary);
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .input-group label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
-        .settings-bar input {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-            padding: 12px 16px;
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            outline: none;
-            transition: all 0.2s ease;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .settings-bar input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px var(--primary-glow);
-        }
-
-        /* Main Grid */
-        .grid-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            animation: slideUp 0.8s ease forwards;
-        }
-
-        @media (max-width: 1100px) {
-            .sidebar { display: none; }
-            body { flex-direction: column; }
-            .main-content { height: auto; }
-        }
-
-        @media (max-width: 800px) {
-            .grid-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .panel {
-            display: flex;
-            flex-direction: column;
-            padding: 24px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .panel:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            gap: 6px;
         }
 
-        .panel-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-highlight);
+        .session-timer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 5px 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .timer-value {
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-separator { color: var(--text-muted); }
+
+        .timer-limit {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            padding: 2px 6px;
+            width: 40px;
+            font-size: 12px;
+            font-family: inherit;
+            text-align: center;
+        }
+
+        .timer-unit { color: var(--text-muted); font-size: 11px; }
+
+        .header-right {
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        
-        .panel-title i {
-            font-style: normal;
-            font-size: 20px;
-        }
 
-        /* Status Badge */
-        .status-badge {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-weight: 700;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-muted);
-            transition: all 0.3s ease;
+        .header-btn {
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            transition: var(--transition);
+            background: transparent;
+            color: var(--text-secondary);
         }
+        .header-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
 
-        .status-badge.active {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-            box-shadow: 0 0 10px var(--success-glow);
+        .header-btn.danger {
+            background: var(--accent-red);
+            color: white;
+            border-color: var(--accent-red);
         }
+        .header-btn.danger:hover { background: #da3633; }
 
-        .status-badge.recording {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-            animation: pulse-danger 2s infinite;
-            box-shadow: 0 0 10px var(--danger-glow);
+        .header-icon-btn {
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            background: transparent;
+            color: var(--text-secondary);
+            transition: var(--transition);
         }
+        .header-icon-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
 
-        .status-badge.processing {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--primary);
-            animation: pulse-primary 2s infinite;
-            box-shadow: 0 0 10px var(--primary-glow);
-        }
-
-        /* Text Area Boxes */
-        .text-box {
+        /* ===== MAIN 3-COLUMN LAYOUT ===== */
+        main {
             flex: 1;
-            min-height: 250px;
-            max-height: 350px;
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1fr;
+            gap: 1px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .column {
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .column-header {
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .column-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .column-content {
+            flex: 1;
             overflow-y: auto;
-            background: rgba(0, 0, 0, 0.15);
-            border-radius: var(--radius-md);
-            padding: 16px;
-            font-size: 15px;
-            line-height: 1.7;
-            color: var(--text-main);
-            border: 1px solid transparent;
-            transition: border-color 0.3s ease;
+            padding: 16px 20px;
+        }
+        .column-content::-webkit-scrollbar { width: 4px; }
+        .column-content::-webkit-scrollbar-track { background: transparent; }
+        .column-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        /* ===== LEFT COLUMN: Registro da Sessão ===== */
+        .session-info {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .export-btn {
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            background: var(--accent-blue-glow);
+            color: var(--accent-blue);
+            border: 1px solid rgba(68, 147, 248, 0.3);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .export-btn:hover { background: rgba(68, 147, 248, 0.25); }
+
+        /* Tabs */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .empty-state {
+            color: var(--text-muted);
+            font-size: 13px;
+            font-style: italic;
+            padding: 40px 0;
+        }
+
+        .anamnesis-text {
             white-space: pre-wrap;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-primary);
+        }
+
+        .tab-badge {
+            width: 6px; height: 6px;
+            background: var(--accent-indigo);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* ===== CENTER COLUMN: Controle de Áudio ===== */
+        .audio-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .audio-status {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .mic-selector-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .mic-selector {
+            width: 100%;
+            max-width: 300px;
+            padding: 8px 12px;
+            font-size: 12px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        /* Waveform */
+        .waveform-container {
+            width: 100%;
+            max-width: 400px;
+            height: 60px;
+            position: relative;
+            margin: 8px 0;
+        }
+
+        #waveform-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Big Mic Button */
+        .mic-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .mic-btn {
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
             position: relative;
         }
-        
-        .text-box:hover {
-            border-color: rgba(255,255,255,0.05);
+
+        .mic-btn.idle {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+            box-shadow: 0 4px 20px rgba(68, 147, 248, 0.3);
+        }
+        .mic-btn.idle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 30px rgba(68, 147, 248, 0.4);
         }
 
-        /* Custom Scrollbar */
-        .text-box::-webkit-scrollbar { width: 6px; }
-        .text-box::-webkit-scrollbar-track { background: transparent; }
-        .text-box::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-        .text-box::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+        .mic-btn.recording {
+            background: var(--accent-red);
+            box-shadow: 0 4px 20px rgba(248, 81, 73, 0.4);
+            animation: record-pulse 1.5s infinite;
+        }
+        @keyframes record-pulse {
+            0%, 100% { box-shadow: 0 4px 20px rgba(248, 81, 73, 0.4); }
+            50% { box-shadow: 0 4px 40px rgba(248, 81, 73, 0.6); }
+        }
+
+        /* Live Transcript Box (bottom of center) */
+        .live-transcript-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            width: 100%;
+            min-height: 100px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+
+        .live-transcript-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .live-transcript-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
 
         .interim-text {
             color: var(--text-muted);
             font-style: italic;
-            opacity: 0.7;
         }
 
-        /* Correction Highlights */
-        .correction-highlight {
-            border-bottom: 2px solid var(--success);
-            background: rgba(16, 185, 129, 0.1);
-            padding: 0 4px;
-            border-radius: 4px;
-            transition: background 0.3s ease;
-            position: relative;
-            cursor: pointer;
-        }
-        
-        .correction-highlight:hover {
-            background: rgba(16, 185, 129, 0.2);
+        .transcript-segment {
+            color: var(--text-primary);
         }
 
-        /* Anamnesis Panel takes full width */
-        .anamnesis-panel {
-            grid-column: 1 / -1;
-            min-height: 300px;
-        }
-        
-        .anamnesis-box {
-            min-height: 300px;
-            max-height: 500px;
-        }
-
-        /* Controls */
-        .controls {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 16px;
-            margin-top: 16px;
-            padding: 24px;
-            animation: slideUp 1s ease forwards;
-        }
-
-        .btn {
-            padding: 14px 28px;
-            border-radius: var(--radius-sm);
-            font-family: 'Outfit', sans-serif;
-            font-size: 16px;
+        .correction-badge {
+            display: inline-block;
+            background: var(--accent-teal-glow);
+            color: var(--accent-teal);
+            font-size: 10px;
             font-weight: 600;
-            cursor: pointer;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        /* ===== RIGHT COLUMN: Fluxo de Consciência ===== */
+        .insight-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .insight-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-indigo);
+            margin-bottom: 6px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            color: #fff;
-            position: relative;
-            overflow: hidden;
+            gap: 4px;
         }
 
-        .btn::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(255,255,255,0.1), transparent);
-            opacity: 0;
-            transition: opacity 0.3s ease;
+        /* Chat mini (inside right column) */
+        .chat-section {
+            border-top: 1px solid var(--border);
+            padding: 12px 20px;
         }
 
-        .btn:hover::after { opacity: 1; }
-        .btn:active { transform: scale(0.97); }
-
-        .btn-mic { 
-            background: rgba(59, 130, 246, 0.1); 
-            border-color: var(--primary);
-            color: var(--primary);
-            box-shadow: 0 4px 15px var(--primary-glow);
-        }
-        .btn-mic:hover {
-            background: var(--primary);
-            color: #fff;
-            box-shadow: 0 8px 25px var(--primary-glow);
-        }
-        
-        .btn-mic.recording {
-            background: rgba(239, 68, 68, 0.1);
-            border-color: var(--danger);
-            color: var(--danger);
-            box-shadow: 0 4px 15px var(--danger-glow);
-            animation: pulse-border-danger 2s infinite;
-        }
-        .btn-mic.recording:hover {
-            background: var(--danger);
-            color: #fff;
+        .chat-form {
+            display: flex;
+            gap: 8px;
         }
 
-        .btn-generate { 
-            background: rgba(16, 185, 129, 0.1);
-            border-color: var(--success);
-            color: var(--success);
-            box-shadow: 0 4px 15px var(--success-glow);
+        .chat-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-family: inherit;
+            transition: var(--transition);
         }
-        .btn-generate:hover { 
-            background: var(--success);
-            color: #fff;
-            box-shadow: 0 8px 25px var(--success-glow);
+        .chat-input:focus { outline: none; border-color: var(--accent-blue); }
+
+        .chat-send {
+            width: 34px; height: 34px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+        .chat-send:hover { background: var(--accent-blue-hover); }
+
+        /* Status indicators */
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--accent-amber);
+        }
+        .status-dot.online { background: var(--accent-green); }
+        .status-dot.offline { background: var(--accent-red); }
+
+        .generating-indicator {
+            font-size: 11px;
+            color: var(--accent-indigo);
+            display: none;
+            align-items: center;
+            gap: 4px;
         }
 
-        .btn-save {
-            background: rgba(245, 158, 11, 0.1);
-            border-color: var(--amber);
-            color: var(--amber);
-            box-shadow: 0 4px 15px var(--amber-glow);
+        .spinner {
+            width: 12px; height: 12px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
         }
-        .btn-save:hover {
-            background: var(--amber);
-            color: #fff;
-            box-shadow: 0 8px 25px var(--amber-glow);
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== SETTINGS MODAL ===== */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: var(--shadow);
         }
 
-        /* Toast Notification */
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .modal-header h3 { font-size: 16px; }
+        .modal-close { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px; }
+
+        .modal-input-group {
+            margin-bottom: 16px;
+        }
+        .modal-input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .modal-input-group input {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .modal-input-group input:focus { outline: none; border-color: var(--accent-blue); }
+
+        .modal-save-btn {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        .modal-save-btn:hover { background: var(--accent-blue-hover); }
+
+        /* Firebase status in header */
+        .firebase-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--accent-green);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .firebase-badge.offline {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--accent-red);
+        }
+
+        /* Toast */
         .toast {
             position: fixed;
             bottom: 24px;
             right: 24px;
-            padding: 14px 24px;
+            padding: 12px 20px;
             border-radius: var(--radius-sm);
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             color: #fff;
             z-index: 9999;
-            transform: translateY(100px);
+            transform: translateY(80px);
             opacity: 0;
-            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            transition: all 0.3s ease;
         }
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-        .toast.success { background: var(--success); box-shadow: 0 8px 25px var(--success-glow); }
-        .toast.error { background: var(--danger); box-shadow: 0 8px 25px var(--danger-glow); }
-        .toast.info { background: var(--primary); box-shadow: 0 8px 25px var(--primary-glow); }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background: var(--accent-green); }
+        .toast.error { background: var(--accent-red); }
+        .toast.info { background: var(--accent-blue); }
 
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse-danger {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-        @keyframes pulse-border-danger {
-            0% { border-color: rgba(239, 68, 68, 1); }
-            50% { border-color: rgba(239, 68, 68, 0.3); }
-            100% { border-color: rgba(239, 68, 68, 1); }
-        }
-        @keyframes pulse-primary {
-            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-        }
-        
-        .pulse-text {
-            animation: textPulse 2s infinite;
-        }
-        
-        @keyframes textPulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .saving-spinner {
-            display: inline-block;
-            width: 14px; height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+        /* Responsive */
+        @media (max-width: 900px) {
+            main { grid-template-columns: 1fr; }
         }
     </style>
 </head>
+
 <body>
 
-    <!-- SIDEBAR: Histórico de Consultas -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h2>📋 Consultas</h2>
-            <div class="sidebar-actions">
-                <button class="sidebar-btn" onclick="newConsultation()" title="Nova consulta">+ Nova</button>
+    <!-- ===== HEADER ===== -->
+    <header>
+        <div class="header-left">
+            <div class="header-logo">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2M12 18a2 2 0 0 1 2 2v2M4.93 4.93v.01M19.07 19.07v.01M2 12h2M20 12h2"></path></svg>
+            </div>
+            <span class="header-name">Dr. Paulo Guimarães Jr.</span>
+            <span id="connection-dot" class="status-dot"></span>
+            <span id="connection-text" style="font-size:11px; color:var(--text-muted);">Conectando...</span>
+        </div>
+
+        <div class="header-center">
+            <div class="clock">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span id="clock-display">--:--:--</span>
+            </div>
+            <div class="session-timer">
+                <span class="timer-value" id="session-timer">00:00</span>
+                <span class="timer-separator">/</span>
+                <input type="text" class="timer-limit" id="timer-limit" value="" placeholder="∞">
+                <span class="timer-unit">min</span>
             </div>
         </div>
-        <div class="sidebar-list" id="consultation-list">
-            <div class="sidebar-empty" id="sidebar-empty">
-                <span>📂</span>
-                Suas consultas salvas aparecerão aqui.<br>
-                <small style="opacity:0.6">Conectando ao Firebase...</small>
-            </div>
+
+        <div class="header-right">
+            <span class="firebase-badge" id="firebase-badge">
+                <span id="fb-dot" style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);"></span>
+                Firebase
+            </span>
+            <button class="header-btn" id="btn-save-firebase" onclick="manualSave()">💾 Salvar</button>
+            <button class="header-btn" id="btn-back" onclick="location.reload()">Voltar</button>
+            <button class="header-btn danger" id="btn-end-session" onclick="endSession()">Encerrar Sessão</button>
+            <button class="header-icon-btn" id="btn-settings" title="Configurações">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
+            </button>
         </div>
-        <div class="firebase-status" id="firebase-status">
-            <span class="dot" id="firebase-dot"></span>
-            <span id="firebase-label">Inicializando Firebase...</span>
-        </div>
-    </aside>
+    </header>
 
-    <!-- MAIN CONTENT -->
-    <main class="main-content">
-        <div class="container">
-            <!-- Header -->
-            <div class="header">
-                <h1>IPagent Prontuário Inteligente</h1>
-                <p>Comunicação em tempo real com seu Agente Híbrido para transcrição médica, correção síncrona e geração de anamnese.</p>
-            </div>
+    <!-- ===== MAIN: 3 COLUMNS ===== -->
+    <main>
 
-            <!-- Settings -->
-            <div class="settings-bar glass">
-                <div class="input-group">
-                    <label>URL do IPagent</label>
-                    <input type="text" id="ipagent-url" value="http://127.0.0.1:5000" placeholder="Ex: http://localhost:5000">
-                </div>
-                <div class="input-group">
-                    <label>Bearer Token (Opcional)</label>
-                    <input type="password" id="ipagent-token" placeholder="ipagent-sk-...">
-                </div>
-                <div id="connection-status" class="status-badge" style="margin-left:auto; font-size: 10px;">Desconectado</div>
-            </div>
-
-            <!-- Main Workspace -->
-            <div class="grid-layout">
-                
-                <!-- Panel 1: Raw Audio -->
-                <div class="panel glass">
-                    <div class="panel-header">
-                        <div class="panel-title"><i>🎙️</i> Escuta Ativa (Nativa)</div>
-                        <span id="status-mic" class="status-badge">Parado</span>
-                    </div>
-                    <div class="text-box" id="raw-transcript">
-                        <span class="interim-text" style="opacity: 0.4;">Pressione "Iniciar Transcrição" para capturar o áudio ambiente...</span>
-                    </div>
-                </div>
-
-                <!-- Panel 2: IPagent Reasoning -->
-                <div class="panel glass">
-                    <div class="panel-header">
-                        <div class="panel-title"><i>🧠</i> Raciocínio IPagent</div>
-                        <span id="status-api" class="status-badge">Aguardando</span>
-                    </div>
-                    <div class="text-box" id="corrected-transcript">
-                        <!-- Corrected text flow -->
-                    </div>
-                </div>
-
-                <!-- Panel 3: Generate Anamnesis -->
-                <div class="panel glass anamnesis-panel">
-                    <div class="panel-header">
-                        <div class="panel-title"><i>📑</i> Prontuário Médico & Anamnese Resultante</div>
-                        <span id="status-anamnesis" class="status-badge">Vazio</span>
-                    </div>
-                    <div class="text-box anamnesis-box" id="anamnesis-output">
-                        <!-- Beautifully formatted Output -->
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Controls -->
-            <div class="controls glass">
-                <button class="btn btn-mic" id="btn-mic" onclick="toggleRecording()">
-                    <span id="mic-icon">🎙️</span>
-                    <span id="mic-label">Iniciar Transcrição</span>
-                </button>
-                <button class="btn btn-generate" id="btn-generate" onclick="generateAnamnesis()">
-                    <span>📄</span> Gerar Prontuário Final
-                </button>
-                <button class="btn btn-save" id="btn-save" onclick="manualSave()">
-                    <span>💾</span> Salvar no Firebase
+        <!-- LEFT COLUMN: Registro da Sessão -->
+        <div class="column" id="col-left">
+            <div class="column-header">
+                <div class="column-title">Registro da Sessão</div>
+                <button class="export-btn" id="btn-export" onclick="exportSession()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Exportar
                 </button>
             </div>
+
+            <div style="padding: 12px 20px 0;">
+                <div class="session-info" id="session-info">
+                    Inicie uma sessão para começar.
+                </div>
+
+                <div class="tab-bar">
+                    <button class="tab-btn active" id="tab-transcription" onclick="switchTab('transcription')">Transcrição Completa</button>
+                    <button class="tab-btn" id="tab-anamnesis" onclick="switchTab('anamnesis')">
+                        Anamnese em Tempo Real
+                        <span id="anamnesis-badge" class="tab-badge" style="display:none;"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="column-content">
+                <div class="tab-content active" id="tab-content-transcription">
+                    <div class="empty-state" id="transcription-empty">A transcrição aparecerá aqui.</div>
+                    <div id="transcription-container" style="display:none;"></div>
+                </div>
+
+                <div class="tab-content" id="tab-content-anamnesis">
+                    <div class="generating-indicator" id="anamnesis-generating">
+                        <span class="spinner"></span> Gerando anamnese...
+                    </div>
+                    <div class="empty-state" id="anamnesis-empty">A anamnese será gerada aqui.</div>
+                    <div id="anamnesis-container" class="anamnesis-text" style="display:none;"></div>
+                </div>
+            </div>
         </div>
+
+        <!-- CENTER COLUMN: Controle de Áudio -->
+        <div class="column" id="col-center">
+            <div class="column-header">
+                <div class="column-title" id="audio-title">
+                    <span id="audio-status-icon">🎙️</span>
+                    Controle de Áudio
+                </div>
+                <span class="audio-status" id="audio-status">Pressione Iniciar para começar</span>
+            </div>
+
+            <div class="audio-section">
+                <div style="width:100%; max-width:300px; text-align:left;">
+                    <label class="mic-selector-label">Microfone</label>
+                    <select class="mic-selector" id="mic-select">
+                        <option>Inicie a escuta para detectar microfones.</option>
+                    </select>
+                </div>
+
+                <div class="waveform-container">
+                    <canvas id="waveform-canvas"></canvas>
+                </div>
+
+                <div class="mic-controls">
+                    <button class="mic-btn idle" id="btn-record" onclick="toggleRecording()">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" x2="12" y1="19" y2="22"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div style="flex:1;"></div>
+
+                <div class="live-transcript-box">
+                    <div class="live-transcript-title">Transcrição em Tempo Real</div>
+                    <div class="live-transcript-text" id="live-transcript">
+                        <span style="color:var(--text-muted); font-style:italic;">Aguardando fala...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Fluxo de Consciência (IA) -->
+        <div class="column" id="col-right">
+            <div class="column-header">
+                <div class="column-title">Fluxo de Consciência (IA)</div>
+            </div>
+
+            <div class="column-content" id="insights-container">
+                <div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>
+            </div>
+
+            <div class="chat-section">
+                <form class="chat-form" id="chat-form">
+                    <input type="text" class="chat-input" id="chat-input" placeholder="Pergunte algo à IA..." autocomplete="off">
+                    <button type="submit" class="chat-send">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
     </main>
 
-    <!-- Toast Container -->
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>⚙️ Configurações de Conexão</h3>
+                <button id="close-settings" class="modal-close">✕</button>
+            </div>
+            <div class="modal-input-group">
+                <label>URL do IPagent (Backend)</label>
+                <input type="text" id="ipagent-url" value="http://127.0.0.1:5000" placeholder="Ex: http://localhost:5000 ou https://seu-tunel.trycloudflare.com">
+            </div>
+            <div class="modal-input-group">
+                <label>Bearer Token (Opcional)</label>
+                <input type="password" id="ipagent-token" placeholder="ipagent-sk-...">
+            </div>
+            <button class="modal-save-btn" onclick="saveSettings()">Salvar e Conectar</button>
+        </div>
+    </div>
+
+    <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <!-- Firebase SDK (ESM via CDN) -->
+    <!-- ===== FIREBASE + APP LOGIC ===== -->
     <script type="module">
-        // =============================================
-        // FIREBASE INITIALIZATION
-        // =============================================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBFkjNEZt7Mk0XaElaln5FpwCyk3NEP9Sw",
@@ -733,466 +806,575 @@
             measurementId: "G-W1R87GELW7"
         };
 
-        let firebaseApp, db, isFirebaseReady = false;
-
+        let db, isFirebaseReady = false;
         try {
-            firebaseApp = initializeApp(firebaseConfig);
-            db = getFirestore(firebaseApp);
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
             isFirebaseReady = true;
-            document.getElementById('firebase-dot').classList.add('online');
-            document.getElementById('firebase-label').textContent = 'Firebase conectado (mfmed-hub)';
-            console.log("✅ Firebase inicializado com sucesso");
-            loadConsultations();
+            document.getElementById('firebase-badge').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);display:inline-block;"></span> Firebase';
         } catch(e) {
-            console.error("❌ Erro ao inicializar Firebase:", e);
-            document.getElementById('firebase-label').textContent = 'Erro Firebase: ' + e.message;
+            document.getElementById('firebase-badge').classList.add('offline');
+            document.getElementById('firebase-badge').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-red);display:inline-block;"></span> Firebase OFF';
         }
 
-        // =============================================
-        // CONFIGURAÇÕES GLOBAIS
-        // =============================================
+        // ==========================================
+        // STATE
+        // ==========================================
         let isRecording = false;
-        let recognition = null;
-        let fullRawText = "";
-        let fullCorrectedText = "";
-        let currentAnamnesis = "";
-        let isIPAgentAwake = false;
-        let currentDocId = null;  // ID do documento Firestore da consulta ativa
+        let speechRecognition = null;
+        let correctionQueue = [];
+        let isProcessingCorrection = false;
+        let anamnesisTimer = null;
+        let lastTranscriptLength = 0;
+        let insightsList = [];
+        let sessionStartTime = null;
+        let sessionTimerInterval = null;
+        let audioContext = null;
+        let analyser = null;
+        let mediaStream = null;
+        let insightsTimerRef = null;
+        let insightCount = 0;
+        let isGeneratingInsight = false;
+        let currentDocId = null;
         let autoSaveTimer = null;
+        let fullRawText = '';
+        let fullCorrectedText = '';
+        let currentAnamnesis = '';
 
-        const DOM = {
-            btnMic: document.getElementById('btn-mic'),
-            micIcon: document.getElementById('mic-icon'),
-            micLabel: document.getElementById('mic-label'),
-            statusMic: document.getElementById('status-mic'),
-            statusApi: document.getElementById('status-api'),
-            statusAnam: document.getElementById('status-anamnesis'),
-            rawBox: document.getElementById('raw-transcript'),
-            correctedBox: document.getElementById('corrected-transcript'),
-            anamnesisBox: document.getElementById('anamnesis-output'),
-            inpUrl: document.getElementById('ipagent-url'),
-            inpToken: document.getElementById('ipagent-token'),
-            connStatus: document.getElementById('connection-status'),
-            consultationList: document.getElementById('consultation-list'),
-            sidebarEmpty: document.getElementById('sidebar-empty'),
-            toast: document.getElementById('toast')
-        };
+        // Base URL (from settings or URL params)
+        let baseUrl = localStorage.getItem('ipagent-url') || 'http://127.0.0.1:5000';
+        let bearerToken = localStorage.getItem('ipagent-token') || '';
 
-        // =============================================
-        // TOAST NOTIFICATIONS
-        // =============================================
-        function showToast(message, type = 'info', duration = 3000) {
-            const t = DOM.toast;
-            t.textContent = '';
-            const iconMap = { success: '✅', error: '❌', info: 'ℹ️' };
-            t.innerHTML = `${iconMap[type] || ''} ${message}`;
-            t.className = `toast ${type}`;
-            setTimeout(() => t.classList.add('show'), 10);
-            setTimeout(() => t.classList.remove('show'), duration);
-        }
+        // ==========================================
+        // UI ELEMENTS
+        // ==========================================
+        const btnRecord = document.getElementById('btn-record');
+        const statusDot = document.getElementById('connection-dot');
+        const statusText = document.getElementById('connection-text');
+        const transcriptionContainer = document.getElementById('transcription-container');
+        const transcriptionEmpty = document.getElementById('transcription-empty');
+        const liveTranscript = document.getElementById('live-transcript');
+        const insightsContainer = document.getElementById('insights-container');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const toastEl = document.getElementById('toast');
 
-        // =============================================
-        // FIREBASE: CRUD CONSULTAS
-        // =============================================
-        async function saveConsultation(status = 'recording') {
-            if (!isFirebaseReady) return;
-            if (!fullRawText.trim() && !currentAnamnesis.trim()) return;
-
-            const data = {
-                rawTranscript: fullRawText,
-                correctedTranscript: fullCorrectedText,
-                anamnesis: currentAnamnesis,
-                status: status,
-                updatedAt: serverTimestamp()
-            };
-
-            try {
-                if (currentDocId) {
-                    // Atualiza documento existente
-                    await updateDoc(doc(db, 'consultations', currentDocId), data);
-                } else {
-                    // Cria novo documento
-                    data.createdAt = serverTimestamp();
-                    const docRef = await addDoc(collection(db, 'consultations'), data);
-                    currentDocId = docRef.id;
-                    console.log("📄 Nova consulta criada:", currentDocId);
-                }
-                loadConsultations();
-            } catch(e) {
-                console.error("Erro ao salvar no Firestore:", e);
-                showToast("Erro ao salvar no Firebase", 'error');
-            }
-        }
-
-        async function loadConsultations() {
-            if (!isFirebaseReady) return;
-
-            try {
-                const q = query(collection(db, 'consultations'), orderBy('createdAt', 'desc'));
-                const snapshot = await getDocs(q);
-                
-                const list = DOM.consultationList;
-                list.innerHTML = '';
-
-                if (snapshot.empty) {
-                    list.innerHTML = `<div class="sidebar-empty"><span>📂</span>Nenhuma consulta salva ainda.<br><small style="opacity:0.6">Inicie uma transcrição para começar.</small></div>`;
-                    return;
-                }
-
-                snapshot.forEach(docSnap => {
-                    const d = docSnap.data();
-                    const id = docSnap.id;
-                    const date = d.createdAt ? d.createdAt.toDate() : new Date();
-                    const preview = (d.rawTranscript || '').substring(0, 80) || 'Consulta vazia';
-                    const statusClass = d.status === 'recording' ? 'recording' : d.status === 'paused' ? 'paused' : 'completed';
-                    const isActive = id === currentDocId;
-
-                    const card = document.createElement('div');
-                    card.className = `consultation-card${isActive ? ' active' : ''}`;
-                    card.onclick = () => loadConsultation(id);
-                    card.innerHTML = `
-                        <div class="cc-date">
-                            <span>${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</span>
-                            <span class="cc-status-dot ${statusClass}" title="${d.status || 'unknown'}"></span>
-                        </div>
-                        <div class="cc-preview">${preview}${(d.rawTranscript||'').length > 80 ? '...' : ''}</div>
-                    `;
-                    list.appendChild(card);
-                });
-            } catch(e) {
-                console.error("Erro ao carregar consultas:", e);
-            }
-        }
-
-        async function loadConsultation(docId) {
-            if (!isFirebaseReady) return;
-            
-            // Para gravação ativa se houver
-            if (isRecording) stopRecording();
-
-            try {
-                const q = query(collection(db, 'consultations'));
-                const snapshot = await getDocs(q);
-                let found = null;
-                snapshot.forEach(d => { if (d.id === docId) found = d.data(); });
-                
-                if (!found) { showToast("Consulta não encontrada", 'error'); return; }
-
-                currentDocId = docId;
-                fullRawText = found.rawTranscript || '';
-                fullCorrectedText = found.correctedTranscript || '';
-                currentAnamnesis = found.anamnesis || '';
-
-                DOM.rawBox.innerHTML = fullRawText || '<span class="interim-text" style="opacity:0.4">Sem transcrição</span>';
-                DOM.correctedBox.innerHTML = fullCorrectedText || '';
-                DOM.anamnesisBox.innerHTML = currentAnamnesis || '';
-
-                if (currentAnamnesis) {
-                    DOM.statusAnam.textContent = 'Carregado';
-                    DOM.statusAnam.className = 'status-badge active';
-                }
-
-                showToast("Consulta carregada", 'success');
-                loadConsultations(); // Destacar a ativa
-            } catch(e) {
-                console.error("Erro ao carregar consulta:", e);
-                showToast("Erro ao carregar consulta", 'error');
-            }
-        }
-
-        function newConsultation() {
-            if (isRecording) stopRecording();
-            
-            // Salva a atual antes de criar nova
-            if (currentDocId && fullRawText.trim()) {
-                saveConsultation('paused');
-            }
-
-            currentDocId = null;
-            fullRawText = '';
-            fullCorrectedText = '';
-            currentAnamnesis = '';
-            DOM.rawBox.innerHTML = '<span class="interim-text" style="opacity: 0.4;">Pressione "Iniciar Transcrição" para capturar o áudio ambiente...</span>';
-            DOM.correctedBox.innerHTML = '';
-            DOM.anamnesisBox.innerHTML = '';
-            DOM.statusAnam.textContent = 'Vazio';
-            DOM.statusAnam.className = 'status-badge';
-            DOM.statusMic.textContent = 'Parado';
-            DOM.statusMic.className = 'status-badge';
-
-            loadConsultations();
-            showToast("Nova consulta iniciada", 'info');
-        }
-
-        // Auto-save debounced (salva 5s após última atividade)
-        function scheduleAutoSave() {
-            if (autoSaveTimer) clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(() => {
-                if (fullRawText.trim()) {
-                    saveConsultation(isRecording ? 'recording' : 'paused');
-                }
-            }, 5000);
-        }
-
-        // Salvar manualmente
-        async function manualSave() {
-            if (!fullRawText.trim() && !currentAnamnesis.trim()) {
-                showToast("Nada para salvar ainda", 'info');
-                return;
-            }
-            const status = currentAnamnesis ? 'completed' : (isRecording ? 'recording' : 'paused');
-            await saveConsultation(status);
-            showToast("Consulta salva no Firebase!", 'success');
-        }
-
-        // =============================================
-        // AUTOPREENCHIMENTO URL/TOKEN
-        // =============================================
+        // ==========================================
+        // INIT — URL params or localStorage
+        // ==========================================
         window.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            if (params.has('url')) DOM.inpUrl.value = params.get('url');
-            if (params.has('token')) DOM.inpToken.value = params.get('token');
-            testConnection();
+            if (params.has('url')) baseUrl = params.get('url');
+            if (params.has('token')) bearerToken = params.get('token');
+            document.getElementById('ipagent-url').value = baseUrl;
+            document.getElementById('ipagent-token').value = bearerToken;
+            checkStatus();
         });
 
-        // =============================================
-        // CONEXÃO IPAGENT
-        // =============================================
-        async function testConnection() {
-            try {
-                const res = await fetch(`${DOM.inpUrl.value.trim()}/`);
-                if(res.ok) {
-                    DOM.connStatus.textContent = "Conectado ao IPagent";
-                    DOM.connStatus.className = "status-badge active";
-                    isIPAgentAwake = true;
-                }
-            } catch(e) {
-                DOM.connStatus.textContent = "Offline";
-                DOM.connStatus.className = "status-badge";
-                isIPAgentAwake = false;
-            }
+        // ==========================================
+        // TOAST
+        // ==========================================
+        function showToast(msg, type = 'info') {
+            toastEl.textContent = msg;
+            toastEl.className = `toast ${type}`;
+            setTimeout(() => toastEl.classList.add('show'), 10);
+            setTimeout(() => toastEl.classList.remove('show'), 3000);
         }
 
-        DOM.inpUrl.addEventListener('change', testConnection);
+        // ==========================================
+        // SETTINGS MODAL
+        // ==========================================
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            document.getElementById('settings-modal').classList.add('active');
+        });
+        document.getElementById('close-settings').addEventListener('click', () => {
+            document.getElementById('settings-modal').classList.remove('active');
+        });
+        document.getElementById('settings-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'settings-modal') e.target.classList.remove('active');
+        });
 
-        // API Helpers
+        function saveSettings() {
+            baseUrl = document.getElementById('ipagent-url').value.trim();
+            bearerToken = document.getElementById('ipagent-token').value.trim();
+            localStorage.setItem('ipagent-url', baseUrl);
+            localStorage.setItem('ipagent-token', bearerToken);
+            document.getElementById('settings-modal').classList.remove('active');
+            checkStatus();
+            showToast('Configurações salvas!', 'success');
+        }
+
+        // ==========================================
+        // CLOCK
+        // ==========================================
+        function updateClock() {
+            document.getElementById('clock-display').textContent =
+                new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // ==========================================
+        // SESSION TIMER
+        // ==========================================
+        function startSessionTimer() {
+            sessionStartTime = Date.now();
+            const timerEl = document.getElementById('session-timer');
+            sessionTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+                timerEl.textContent = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function stopSessionTimer() {
+            if (sessionTimerInterval) { clearInterval(sessionTimerInterval); sessionTimerInterval = null; }
+        }
+
+        // ==========================================
+        // CHECK CONNECTION
+        // ==========================================
         function getHeaders() {
-            const headers = { 'Content-Type': 'application/json' };
-            const token = DOM.inpToken.value.trim();
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            return headers;
+            const h = { 'Content-Type': 'application/json' };
+            if (bearerToken) h['Authorization'] = `Bearer ${bearerToken}`;
+            return h;
         }
 
-        // =============================================
-        // WEB SPEECH API
-        // =============================================
-        function initSpeech() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                alert("Navegador incompatível com Web Speech API (Use Chrome ou Edge atualizados).");
-                return;
-            }
-
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'pt-BR';
-
-            recognition.onstart = () => {
-                isRecording = true;
-                DOM.btnMic.classList.add('recording');
-                DOM.micIcon.textContent = '⏹️';
-                DOM.micLabel.textContent = 'Parar Transcrição';
-                
-                DOM.statusMic.textContent = 'Ouvindo...';
-                DOM.statusMic.className = 'status-badge recording';
-                
-                if (fullRawText === "") DOM.rawBox.innerHTML = '';
-            };
-
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                if (finalTranscript) {
-                    fullRawText += finalTranscript;
-                    sendToIPagent(finalTranscript);
-                    scheduleAutoSave(); // Auto-save ao Firestore
-                }
-
-                DOM.rawBox.innerHTML = fullRawText + '<span class="interim-text">' + interimTranscript + '</span>';
-                DOM.rawBox.scrollTop = DOM.rawBox.scrollHeight;
-            };
-
-            recognition.onerror = (event) => {
-                console.error("Erro na escuta:", event.error);
-                if (event.error !== 'no-speech') stopRecording();
-            };
-
-            recognition.onend = () => {
-                if (isRecording) {
-                    try { recognition.start(); } catch(e){}
-                }
-            };
-        }
-
-        async function toggleRecording() {
-            if (!recognition) initSpeech();
-            
-            if (isRecording) {
-                stopRecording();
-                saveConsultation('paused');
-            } else {
-                await startSessionOnIPagent();
-                recognition.start();
-            }
-        }
-
-        function stopRecording() {
-            isRecording = false;
-            if (recognition) recognition.stop();
-            
-            DOM.btnMic.classList.remove('recording');
-            DOM.micIcon.textContent = '🎙️';
-            DOM.micLabel.textContent = 'Continuar Transcrição';
-            
-            DOM.statusMic.textContent = 'Em pausa';
-            DOM.statusMic.className = 'status-badge';
-        }
-
-        // =============================================
-        // IPAGENT API INTERACTION
-        // =============================================
-        async function startSessionOnIPagent() {
-            if(!isIPAgentAwake) await testConnection();
+        async function checkStatus() {
             try {
-                await fetch(`${DOM.inpUrl.value.trim()}/api/transcription/start`, {
-                    method: 'POST',
-                    headers: getHeaders()
-                });
-            } catch (error) {
-                console.warn("Aviso ao resetar sessão IPagent:", error);
-            }
-        }
-
-        async function sendToIPagent(textSegment) {
-            if (!textSegment.trim()) return;
-            const baseUrl = DOM.inpUrl.value.trim();
-
-            DOM.statusApi.textContent = 'Analisando...';
-            DOM.statusApi.className = 'status-badge processing';
-
-            try {
-                // Atualiza o contexto (assíncrono sem aguardar)
-                fetch(`${baseUrl}/api/transcription/update`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ text: textSegment })
-                }).catch(e => {});
-
-                // Solicita correção médica e raciocínio para a frase
-                const response = await fetch(`${baseUrl}/api/transcription/correct`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ text: textSegment })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    const span = document.createElement('span');
-                    span.textContent = data.corrected + " ";
-                    fullCorrectedText += data.corrected + " ";
-                    
-                    const cleanOrig = data.original.trim().toLowerCase();
-                    const cleanCorr = data.corrected.trim().toLowerCase();
-                    
-                    if (cleanOrig !== cleanCorr && cleanCorr !== "") {
-                        span.className = "correction-highlight";
-                        span.title = `Original: ${data.original}`;
-                    }
-                    
-                    DOM.correctedBox.appendChild(span);
+                const res = await fetch(`${baseUrl}/`, { headers: getHeaders() });
+                if (res.ok) {
+                    statusDot.className = 'status-dot online';
+                    statusText.textContent = 'IA Online';
                 } else {
-                    const txt = document.createTextNode(textSegment + " [Recusado] ");
-                    DOM.correctedBox.appendChild(txt);
-                    fullCorrectedText += textSegment + " ";
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'IA Offline';
                 }
-            } catch (error) {
-                console.error("Erro na API IPagent:", error);
-                const span = document.createElement('span');
-                span.style.color = 'var(--text-muted)';
-                span.textContent = textSegment + " ";
-                DOM.correctedBox.appendChild(span);
-                fullCorrectedText += textSegment + " ";
-            } finally {
-                DOM.correctedBox.scrollTop = DOM.correctedBox.scrollHeight;
-                DOM.statusApi.textContent = 'Online';
-                DOM.statusApi.className = 'status-badge active';
+            } catch {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = 'Servidor offline';
             }
         }
+        setInterval(checkStatus, 15000);
+
+        // ==========================================
+        // WAVEFORM
+        // ==========================================
+        function initWaveform(stream) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            audioContext.createMediaStreamSource(stream).connect(analyser);
+            const canvas = document.getElementById('waveform-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+
+            function draw() {
+                if (!isRecording) { ctx.clearRect(0, 0, canvas.width, canvas.height); return; }
+                requestAnimationFrame(draw);
+                const buf = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteTimeDomainData(buf);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(68, 147, 248, 0.6)';
+                ctx.beginPath();
+                const sw = canvas.width / buf.length;
+                let x = 0;
+                for (let i = 0; i < buf.length; i++) {
+                    const y = (buf[i] / 128.0) * (canvas.height / 2);
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    x += sw;
+                }
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+            }
+            draw();
+        }
+
+        async function enumerateMicrophones() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const mics = devices.filter(d => d.kind === 'audioinput');
+                const sel = document.getElementById('mic-select');
+                sel.innerHTML = '';
+                mics.forEach((m, i) => {
+                    const o = document.createElement('option');
+                    o.value = m.deviceId;
+                    o.textContent = m.label || `Microfone ${i + 1}`;
+                    sel.appendChild(o);
+                });
+                if (!mics.length) sel.innerHTML = '<option>Nenhum microfone</option>';
+            } catch(e) {}
+        }
+
+        // ==========================================
+        // SPEECH RECOGNITION
+        // ==========================================
+        function initSpeechRecognition() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { alert('Navegador não suporta transcrição. Use Chrome ou Edge.'); return false; }
+
+            speechRecognition = new SR();
+            speechRecognition.continuous = true;
+            speechRecognition.interimResults = true;
+            speechRecognition.lang = 'pt-BR';
+
+            speechRecognition.onresult = (event) => {
+                let interim = '', final = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) final += event.results[i][0].transcript + ' ';
+                    else interim += event.results[i][0].transcript;
+                }
+                if (final.trim()) {
+                    fullRawText += final;
+                    addTranscript(final.trim());
+                    enqueueCorrection(final.trim());
+                    fetch(`${baseUrl}/api/transcription/update`, {
+                        method: 'POST', headers: getHeaders(),
+                        body: JSON.stringify({ text: final.trim() })
+                    }).catch(() => {});
+                    scheduleAutoSave();
+                }
+                if (interim) showLiveInterim(interim);
+            };
+
+            speechRecognition.onerror = (e) => {
+                if (e.error !== 'no-speech' && e.error !== 'aborted') console.warn('Speech error:', e.error);
+            };
+            speechRecognition.onend = () => { if (isRecording) try { speechRecognition.start(); } catch(e) {} };
+            return true;
+        }
+
+        // ==========================================
+        // TRANSCRIPTION UI
+        // ==========================================
+        function addTranscript(text) {
+            transcriptionEmpty.style.display = 'none';
+            transcriptionContainer.style.display = 'block';
+            const span = document.createElement('span');
+            span.className = 'transcript-segment';
+            span.setAttribute('data-raw', text);
+            span.textContent = text + ' ';
+            transcriptionContainer.appendChild(span);
+            transcriptionContainer.scrollTo(0, transcriptionContainer.scrollHeight);
+            showLiveFinal(text);
+        }
+
+        function showLiveInterim(text) {
+            let el = liveTranscript.querySelector('.interim-text');
+            if (!el) { el = document.createElement('span'); el.className = 'interim-text'; liveTranscript.appendChild(el); }
+            el.textContent = text;
+        }
+
+        function showLiveFinal(text) {
+            const it = liveTranscript.querySelector('.interim-text'); if (it) it.remove();
+            const ph = liveTranscript.querySelector('[style*="italic"]'); if (ph) ph.remove();
+            const s = document.createElement('span'); s.className = 'transcript-segment'; s.textContent = text + ' ';
+            liveTranscript.appendChild(s);
+            liveTranscript.scrollTop = liveTranscript.scrollHeight;
+        }
+
+        // ==========================================
+        // CORRECTION QUEUE
+        // ==========================================
+        function enqueueCorrection(text) { correctionQueue.push(text); processNextCorrection(); }
+
+        async function processNextCorrection() {
+            if (isProcessingCorrection || !correctionQueue.length) return;
+            isProcessingCorrection = true;
+            const text = correctionQueue.shift();
+            try {
+                const res = await fetch(`${baseUrl}/api/transcription/correct`, {
+                    method: 'POST', headers: getHeaders(),
+                    body: JSON.stringify({ text })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.corrected && data.corrected !== data.original) {
+                        applyCorrectionToUI(data.original, data.corrected, data.terms_found);
+                    }
+                    fullCorrectedText += (data.corrected || text) + ' ';
+                }
+            } catch(e) { fullCorrectedText += text + ' '; }
+            isProcessingCorrection = false;
+            if (correctionQueue.length) setTimeout(processNextCorrection, 100);
+        }
+
+        function applyCorrectionToUI(original, corrected, terms) {
+            const segs = transcriptionContainer.querySelectorAll('.transcript-segment');
+            for (const seg of segs) {
+                if (seg.getAttribute('data-raw') === original) {
+                    seg.textContent = corrected + ' ';
+                    seg.style.color = 'var(--accent-teal)';
+                    setTimeout(() => { seg.style.color = ''; }, 2000);
+                    if (terms && terms.toLowerCase() !== 'nenhum') {
+                        const b = document.createElement('span'); b.className = 'correction-badge'; b.textContent = '✓ corrigido';
+                        seg.appendChild(b);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // ==========================================
+        // TOGGLE RECORDING
+        // ==========================================
+        async function toggleRecording() {
+            isRecording = !isRecording;
+            if (isRecording) {
+                if (!speechRecognition && !initSpeechRecognition()) { isRecording = false; return; }
+                btnRecord.className = 'mic-btn recording';
+                document.getElementById('audio-status').textContent = 'Ouvindo... Fale agora.';
+                document.getElementById('audio-status-icon').textContent = '✦';
+
+                const now = new Date();
+                document.getElementById('session-info').innerHTML =
+                    `Início: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}<br>Modo: Frontend Client`;
+
+                transcriptionContainer.innerHTML = '';
+                transcriptionEmpty.style.display = 'block';
+                transcriptionContainer.style.display = 'none';
+                liveTranscript.innerHTML = '<span style="color:var(--text-muted); font-style:italic;">Aguardando fala...</span>';
+                fullRawText = ''; fullCorrectedText = ''; currentAnamnesis = '';
+                lastTranscriptLength = 0; insightsList = [];
+                insightsContainer.innerHTML = '<div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>';
+
+                startSessionTimer();
+                fetch(`${baseUrl}/api/transcription/start`, { method: 'POST', headers: getHeaders() }).catch(() => {});
+                startAnamnesisTimer();
+                startInsightsTimer();
+
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    initWaveform(mediaStream);
+                    enumerateMicrophones();
+                } catch(e) {}
+
+                try { speechRecognition.start(); } catch(e) {}
+            } else {
+                btnRecord.className = 'mic-btn idle';
+                document.getElementById('audio-status').textContent = 'Sessão encerrada.';
+                document.getElementById('audio-status-icon').textContent = '🎙️';
+                stopSessionTimer(); stopAnamnesisTimer(); stopInsightsTimer();
+                if (speechRecognition) speechRecognition.stop();
+                if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+                generateAnamnesis();
+                saveConsultation('completed');
+            }
+        }
+
+        function endSession() {
+            if (isRecording) toggleRecording();
+            document.getElementById('session-timer').textContent = '00:00';
+            document.getElementById('audio-status').textContent = 'Pressione Iniciar para começar';
+        }
+
+        // ==========================================
+        // TAB SWITCHING
+        // ==========================================
+        function switchTab(name) {
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            if (name === 'transcription') {
+                document.getElementById('tab-transcription').classList.add('active');
+                document.getElementById('tab-content-transcription').classList.add('active');
+            } else {
+                document.getElementById('tab-anamnesis').classList.add('active');
+                document.getElementById('tab-content-anamnesis').classList.add('active');
+                document.getElementById('anamnesis-badge').style.display = 'none';
+            }
+        }
+
+        // ==========================================
+        // ANAMNESIS
+        // ==========================================
+        function startAnamnesisTimer() {
+            anamnesisTimer = setInterval(() => {
+                const len = transcriptionContainer.innerText.length;
+                if (len - lastTranscriptLength > 50) { generateAnamnesis(); lastTranscriptLength = len; }
+            }, 30000);
+        }
+        function stopAnamnesisTimer() { if (anamnesisTimer) { clearInterval(anamnesisTimer); anamnesisTimer = null; } }
 
         async function generateAnamnesis() {
-            if (!fullRawText.trim()) {
-                alert("Nenhum áudio foi capturado ainda para gerar prontuário.");
-                return;
-            }
-            
-            const baseUrl = DOM.inpUrl.value.trim();
-            DOM.statusAnam.textContent = "Gerando...";
-            DOM.statusAnam.className = "status-badge processing";
-            DOM.anamnesisBox.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><span class="pulse-text" style="font-size:18px; color:var(--primary);">🧠 O IPagent está estruturando o Prontuário Médico...</span><br><span style="font-size:13px; color:var(--text-muted);">Isso pode levar alguns instantes dependendo da complexidade do caso.</span></div>';
-            
+            const gen = document.getElementById('anamnesis-generating');
+            const container = document.getElementById('anamnesis-container');
+            const empty = document.getElementById('anamnesis-empty');
+            const badge = document.getElementById('anamnesis-badge');
+            gen.style.display = 'flex';
             try {
-                const response = await fetch(`${baseUrl}/api/anamnesis/generate`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ transcript: fullRawText })
+                const res = await fetch(`${baseUrl}/api/anamnesis/generate`, {
+                    method: 'POST', headers: getHeaders(), body: JSON.stringify({})
                 });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    let htmlContent = data.anamnesis;
-                    htmlContent = htmlContent.replace(/\*\*(.*?)\*\*/g, '<strong><span style="color:var(--text-highlight);">$1</span></strong>');
-                    htmlContent = htmlContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
-                    htmlContent = htmlContent.replace(/# (.*?)\n/g, '<h2 style="color:var(--primary); font-family: Outfit, sans-serif; margin-top:20px;">$1</h2>');
-                    htmlContent = htmlContent.replace(/## (.*?)\n/g, '<h3 style="color:var(--success); font-family: Outfit, sans-serif; margin-top:16px;">$1</h3>');
-                    htmlContent = htmlContent.replace(/\n\n/g, '<br><br>');
-                    
-                    DOM.statusAnam.textContent = "Concluído";
-                    DOM.statusAnam.className = "status-badge active";
-                    DOM.anamnesisBox.innerHTML = htmlContent;
-                    currentAnamnesis = htmlContent;
-
-                    // Auto-save como completed
-                    saveConsultation('completed');
-                    showToast("Prontuário gerado e salvo!", 'success');
-                } else {
-                    throw new Error("Falha no IPagent");
+                const data = await res.json();
+                if ((data.status === 'success' || res.ok) && data.anamnesis) {
+                    empty.style.display = 'none';
+                    container.style.display = 'block';
+                    currentAnamnesis = data.anamnesis;
+                    container.innerHTML = data.anamnesis
+                        .replace(/\[([^\]]+)\]/g, '<strong style="color:var(--accent-indigo);">[$1]</strong>')
+                        .replace(/não informado/gi, '<span style="color:var(--text-muted); font-style:italic;">não informado</span>')
+                        .replace(/\n/g, '<br>');
+                    if (!document.getElementById('tab-anamnesis').classList.contains('active')) {
+                        badge.style.display = 'inline-block';
+                    }
                 }
-            } catch (error) {
-                DOM.statusAnam.textContent = "Erro";
-                DOM.statusAnam.className = "status-badge recording";
-                DOM.anamnesisBox.innerHTML = `<span style="color:var(--danger)">⚠️ Erro ao comunicar com o servidor. O IPagent está em execução em ${baseUrl}?</span>`;
-                console.error(error);
-            }
+            } catch(e) { console.warn('Anamnese error:', e); }
+            finally { gen.style.display = 'none'; }
         }
 
-        // Expose to global scope (required because HTML onclick uses global functions)
+        // ==========================================
+        // INSIGHTS (Fluxo de Consciência)
+        // ==========================================
+        const INSIGHT_PROMPTS = [
+            'Com base na transcrição desta consulta, forneça UM insight clínico breve. Máx 2 frases.',
+            'Analise e sugira UM diagnóstico diferencial importante. Máx 2 frases.',
+            'Sugira UMA pergunta para esclarecer o quadro. Máx 2 frases.',
+            'Verifique interações medicamentosas ou alertas. Máx 2 frases.',
+            'Sugira UM exame complementar relevante. Máx 2 frases.',
+            'Há sinais de alerta (red flags)? Máx 2 frases.'
+        ];
+
+        function startInsightsTimer() {
+            insightsTimerRef = setInterval(() => {
+                if (transcriptionContainer.innerText.length > 30 && !isGeneratingInsight) generateInsight();
+            }, 20000);
+        }
+        function stopInsightsTimer() { if (insightsTimerRef) { clearInterval(insightsTimerRef); insightsTimerRef = null; } }
+
+        async function generateInsight() {
+            if (isGeneratingInsight) return;
+            isGeneratingInsight = true;
+            try {
+                const prompt = INSIGHT_PROMPTS[insightCount % INSIGHT_PROMPTS.length];
+                const labels = ['💡 Insight', '🔍 Diagnóstico', '❓ Pergunta', '⚠️ Alerta', '🔬 Exame', '🚨 Red Flag'];
+                const label = labels[insightCount % labels.length];
+                insightCount++;
+
+                const card = document.createElement('div');
+                card.className = 'insight-item';
+                card.innerHTML = `<div class="insight-label">${label} <span class="spinner" style="width:10px;height:10px;"></span></div><span class="insight-text"></span>`;
+                const empty = insightsContainer.querySelector('.empty-state');
+                if (empty) empty.remove();
+                insightsContainer.prepend(card);
+
+                const res = await fetch(`${baseUrl}/api/chat/stream`, {
+                    method: 'POST', headers: getHeaders(),
+                    body: JSON.stringify({ message: prompt, use_context: true })
+                });
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                const textEl = card.querySelector('.insight-text');
+                let full = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    for (const line of decoder.decode(value).split('\n')) {
+                        if (line.startsWith('data: ')) {
+                            try { const j = JSON.parse(line.slice(6)); if (j.token) { full += j.token; textEl.textContent = full; } } catch {}
+                        }
+                    }
+                }
+                const sp = card.querySelector('.spinner'); if (sp) sp.remove();
+                insightsList.push(full);
+            } catch(e) { console.warn('Insight error:', e); }
+            finally { isGeneratingInsight = false; }
+        }
+
+        // ==========================================
+        // CHAT
+        // ==========================================
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = chatInput.value.trim();
+            if (!msg) return;
+            chatInput.value = '';
+            chatInput.disabled = true;
+
+            const empty = insightsContainer.querySelector('.empty-state');
+            if (empty) empty.remove();
+
+            const card = document.createElement('div');
+            card.className = 'insight-item';
+            card.innerHTML = `<strong style="color:var(--accent-blue);">Você:</strong> ${msg}<br><br><span class="insight-text"><span class="spinner" style="display:inline-block;"></span></span>`;
+            insightsContainer.appendChild(card);
+            insightsContainer.scrollTop = insightsContainer.scrollHeight;
+
+            try {
+                const res = await fetch(`${baseUrl}/api/chat/stream`, {
+                    method: 'POST', headers: getHeaders(),
+                    body: JSON.stringify({ message: msg, use_context: true })
+                });
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                const textEl = card.querySelector('.insight-text');
+                let full = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    for (const line of decoder.decode(value).split('\n')) {
+                        if (line.startsWith('data: ')) {
+                            try { const j = JSON.parse(line.slice(6)); if (j.token) { full += j.token; textEl.textContent = full; } } catch {}
+                        }
+                    }
+                }
+            } catch(e) { console.error('Chat error:', e); }
+            chatInput.disabled = false;
+            chatInput.focus();
+        });
+
+        // ==========================================
+        // EXPORT
+        // ==========================================
+        function exportSession() {
+            const text = `=== TRANSCRIÇÃO ===\n${fullRawText}\n\n=== ANAMNESE ===\n${currentAnamnesis}`;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `consulta_${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+        }
+
+        // ==========================================
+        // FIREBASE: save/load
+        // ==========================================
+        async function saveConsultation(status = 'recording') {
+            if (!isFirebaseReady || (!fullRawText.trim() && !currentAnamnesis)) return;
+            const data = { rawTranscript: fullRawText, correctedTranscript: fullCorrectedText, anamnesis: currentAnamnesis, status, updatedAt: serverTimestamp() };
+            try {
+                if (currentDocId) {
+                    await updateDoc(doc(db, 'consultations', currentDocId), data);
+                } else {
+                    data.createdAt = serverTimestamp();
+                    const ref = await addDoc(collection(db, 'consultations'), data);
+                    currentDocId = ref.id;
+                }
+            } catch(e) { console.error('Firebase save error:', e); }
+        }
+
+        function scheduleAutoSave() {
+            if (autoSaveTimer) clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => { if (fullRawText.trim()) saveConsultation(isRecording ? 'recording' : 'paused'); }, 5000);
+        }
+
+        async function manualSave() {
+            if (!fullRawText.trim() && !currentAnamnesis) { showToast('Nada para salvar', 'info'); return; }
+            await saveConsultation(currentAnamnesis ? 'completed' : 'paused');
+            showToast('Salvo no Firebase!', 'success');
+        }
+
+        // ==========================================
+        // EXPOSE TO GLOBAL
+        // ==========================================
         window.toggleRecording = toggleRecording;
-        window.generateAnamnesis = generateAnamnesis;
+        window.endSession = endSession;
+        window.switchTab = switchTab;
         window.manualSave = manualSave;
-        window.newConsultation = newConsultation;
-        window.loadConsultation = loadConsultation;
+        window.exportSession = exportSession;
+        window.saveSettings = saveSettings;
     </script>
+
 </body>
+
 </html>
