@@ -26,6 +26,9 @@
             --success-hover: #059669;
             --success-glow: rgba(16, 185, 129, 0.4);
 
+            --amber: #f59e0b;
+            --amber-glow: rgba(245, 158, 11, 0.4);
+
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --text-highlight: #e2e8f0;
@@ -51,9 +54,8 @@
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 40px 20px;
+            flex-direction: row;
+            padding: 0;
         }
 
         /* Glassmorphism utility */
@@ -64,6 +66,155 @@
             border: 1px solid var(--panel-border);
             border-radius: var(--radius-lg);
             box-shadow: var(--panel-shadow);
+        }
+
+        /* ===== SIDEBAR: Histórico de Consultas ===== */
+        .sidebar {
+            width: 300px;
+            min-width: 300px;
+            background: rgba(10, 13, 18, 0.95);
+            border-right: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-highlight);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sidebar-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+        .sidebar-btn:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .sidebar-list::-webkit-scrollbar { width: 4px; }
+        .sidebar-list::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+
+        .consultation-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .consultation-card:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.12);
+            transform: translateX(4px);
+        }
+        .consultation-card.active {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .consultation-card .cc-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .consultation-card .cc-preview {
+            font-size: 13px;
+            color: var(--text-highlight);
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .cc-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .cc-status-dot.recording { background: var(--danger); animation: pulse-danger 2s infinite; }
+        .cc-status-dot.paused { background: var(--amber); }
+        .cc-status-dot.completed { background: var(--success); }
+
+        .sidebar-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .sidebar-empty span { font-size: 32px; display: block; margin-bottom: 12px; }
+
+        .firebase-status {
+            padding: 12px 20px;
+            border-top: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .firebase-status .dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--text-muted);
+        }
+        .firebase-status .dot.online { background: var(--success); box-shadow: 0 0 6px var(--success-glow); }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            overflow-y: auto;
+            height: 100vh;
         }
 
         .container {
@@ -153,6 +304,12 @@
             grid-template-columns: 1fr 1fr;
             gap: 24px;
             animation: slideUp 0.8s ease forwards;
+        }
+
+        @media (max-width: 1100px) {
+            .sidebar { display: none; }
+            body { flex-direction: column; }
+            .main-content { height: auto; }
         }
 
         @media (max-width: 800px) {
@@ -295,7 +452,8 @@
         .controls {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
             margin-top: 16px;
             padding: 24px;
             animation: slideUp 1s ease forwards;
@@ -366,6 +524,44 @@
             box-shadow: 0 8px 25px var(--success-glow);
         }
 
+        .btn-save {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: var(--amber);
+            color: var(--amber);
+            box-shadow: 0 4px 15px var(--amber-glow);
+        }
+        .btn-save:hover {
+            background: var(--amber);
+            color: #fff;
+            box-shadow: 0 8px 25px var(--amber-glow);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 24px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            color: #fff;
+            z-index: 9999;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success { background: var(--success); box-shadow: 0 8px 25px var(--success-glow); }
+        .toast.error { background: var(--danger); box-shadow: 0 8px 25px var(--danger-glow); }
+        .toast.info { background: var(--primary); box-shadow: 0 8px 25px var(--primary-glow); }
+
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -403,86 +599,166 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .saving-spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>IPagent Prontuário Inteligente</h1>
-            <p>Comunicação em tempo real com seu Agente Híbrido para transcrição médica, correção síncrona e geração de anamnese.</p>
+    <!-- SIDEBAR: Histórico de Consultas -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>📋 Consultas</h2>
+            <div class="sidebar-actions">
+                <button class="sidebar-btn" onclick="newConsultation()" title="Nova consulta">+ Nova</button>
+            </div>
         </div>
-
-        <!-- Settings -->
-        <div class="settings-bar glass">
-            <div class="input-group">
-                <label>URL do IPagent</label>
-                <input type="text" id="ipagent-url" value="http://127.0.0.1:5000" placeholder="Ex: http://localhost:5000">
+        <div class="sidebar-list" id="consultation-list">
+            <div class="sidebar-empty" id="sidebar-empty">
+                <span>📂</span>
+                Suas consultas salvas aparecerão aqui.<br>
+                <small style="opacity:0.6">Conectando ao Firebase...</small>
             </div>
-            <div class="input-group">
-                <label>Bearer Token (Opcional)</label>
-                <input type="password" id="ipagent-token" placeholder="ipagent-sk-...">
-            </div>
-            <div id="connection-status" class="status-badge" style="margin-left:auto; font-size: 10px;">Desconectado</div>
         </div>
-
-        <!-- Main Workspace -->
-        <div class="grid-layout">
-            
-            <!-- Panel 1: Raw Audio -->
-            <div class="panel glass">
-                <div class="panel-header">
-                    <div class="panel-title"><i>🎙️</i> Escuta Ativa (Nativa)</div>
-                    <span id="status-mic" class="status-badge">Parado</span>
-                </div>
-                <div class="text-box" id="raw-transcript">
-                    <span class="interim-text" style="opacity: 0.4;">Pressione "Iniciar Transcrição" para capturar o áudio ambiente...</span>
-                </div>
-            </div>
-
-            <!-- Panel 2: IPagent Reasoning -->
-            <div class="panel glass">
-                <div class="panel-header">
-                    <div class="panel-title"><i>🧠</i> Raciocínio IPagent</div>
-                    <span id="status-api" class="status-badge">Aguardando</span>
-                </div>
-                <div class="text-box" id="corrected-transcript">
-                    <!-- Corrected text flow -->
-                </div>
-            </div>
-
-            <!-- Panel 3: Generate Anamnesis -->
-            <div class="panel glass anamnesis-panel">
-                <div class="panel-header">
-                    <div class="panel-title"><i>📑</i> Prontuário Médico & Anamnese Resultante</div>
-                    <span id="status-anamnesis" class="status-badge">Vazio</span>
-                </div>
-                <div class="text-box anamnesis-box" id="anamnesis-output">
-                    <!-- Beautifully formatted Output -->
-                </div>
-            </div>
-
+        <div class="firebase-status" id="firebase-status">
+            <span class="dot" id="firebase-dot"></span>
+            <span id="firebase-label">Inicializando Firebase...</span>
         </div>
+    </aside>
 
-        <!-- Controls -->
-        <div class="controls glass">
-            <button class="btn btn-mic" id="btn-mic" onclick="toggleRecording()">
-                <span id="mic-icon">🎙️</span>
-                <span id="mic-label">Iniciar Transcrição</span>
-            </button>
-            <button class="btn btn-generate" id="btn-generate" onclick="generateAnamnesis()">
-                <span>📄</span> Gerar Prontuário Final
-            </button>
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <h1>IPagent Prontuário Inteligente</h1>
+                <p>Comunicação em tempo real com seu Agente Híbrido para transcrição médica, correção síncrona e geração de anamnese.</p>
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-bar glass">
+                <div class="input-group">
+                    <label>URL do IPagent</label>
+                    <input type="text" id="ipagent-url" value="http://127.0.0.1:5000" placeholder="Ex: http://localhost:5000">
+                </div>
+                <div class="input-group">
+                    <label>Bearer Token (Opcional)</label>
+                    <input type="password" id="ipagent-token" placeholder="ipagent-sk-...">
+                </div>
+                <div id="connection-status" class="status-badge" style="margin-left:auto; font-size: 10px;">Desconectado</div>
+            </div>
+
+            <!-- Main Workspace -->
+            <div class="grid-layout">
+                
+                <!-- Panel 1: Raw Audio -->
+                <div class="panel glass">
+                    <div class="panel-header">
+                        <div class="panel-title"><i>🎙️</i> Escuta Ativa (Nativa)</div>
+                        <span id="status-mic" class="status-badge">Parado</span>
+                    </div>
+                    <div class="text-box" id="raw-transcript">
+                        <span class="interim-text" style="opacity: 0.4;">Pressione "Iniciar Transcrição" para capturar o áudio ambiente...</span>
+                    </div>
+                </div>
+
+                <!-- Panel 2: IPagent Reasoning -->
+                <div class="panel glass">
+                    <div class="panel-header">
+                        <div class="panel-title"><i>🧠</i> Raciocínio IPagent</div>
+                        <span id="status-api" class="status-badge">Aguardando</span>
+                    </div>
+                    <div class="text-box" id="corrected-transcript">
+                        <!-- Corrected text flow -->
+                    </div>
+                </div>
+
+                <!-- Panel 3: Generate Anamnesis -->
+                <div class="panel glass anamnesis-panel">
+                    <div class="panel-header">
+                        <div class="panel-title"><i>📑</i> Prontuário Médico & Anamnese Resultante</div>
+                        <span id="status-anamnesis" class="status-badge">Vazio</span>
+                    </div>
+                    <div class="text-box anamnesis-box" id="anamnesis-output">
+                        <!-- Beautifully formatted Output -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Controls -->
+            <div class="controls glass">
+                <button class="btn btn-mic" id="btn-mic" onclick="toggleRecording()">
+                    <span id="mic-icon">🎙️</span>
+                    <span id="mic-label">Iniciar Transcrição</span>
+                </button>
+                <button class="btn btn-generate" id="btn-generate" onclick="generateAnamnesis()">
+                    <span>📄</span> Gerar Prontuário Final
+                </button>
+                <button class="btn btn-save" id="btn-save" onclick="manualSave()">
+                    <span>💾</span> Salvar no Firebase
+                </button>
+            </div>
         </div>
-    </div>
+    </main>
 
-    <script>
-        // Configurações
+    <!-- Toast Container -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Firebase SDK (ESM via CDN) -->
+    <script type="module">
+        // =============================================
+        // FIREBASE INITIALIZATION
+        // =============================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBFkjNEZt7Mk0XaElaln5FpwCyk3NEP9Sw",
+            authDomain: "mfmed-hub.firebaseapp.com",
+            projectId: "mfmed-hub",
+            storageBucket: "mfmed-hub.firebasestorage.app",
+            messagingSenderId: "323755417402",
+            appId: "1:323755417402:web:6fb9fc89faa2c2a02bfa03",
+            measurementId: "G-W1R87GELW7"
+        };
+
+        let firebaseApp, db, isFirebaseReady = false;
+
+        try {
+            firebaseApp = initializeApp(firebaseConfig);
+            db = getFirestore(firebaseApp);
+            isFirebaseReady = true;
+            document.getElementById('firebase-dot').classList.add('online');
+            document.getElementById('firebase-label').textContent = 'Firebase conectado (mfmed-hub)';
+            console.log("✅ Firebase inicializado com sucesso");
+            loadConsultations();
+        } catch(e) {
+            console.error("❌ Erro ao inicializar Firebase:", e);
+            document.getElementById('firebase-label').textContent = 'Erro Firebase: ' + e.message;
+        }
+
+        // =============================================
+        // CONFIGURAÇÕES GLOBAIS
+        // =============================================
         let isRecording = false;
         let recognition = null;
         let fullRawText = "";
+        let fullCorrectedText = "";
+        let currentAnamnesis = "";
         let isIPAgentAwake = false;
+        let currentDocId = null;  // ID do documento Firestore da consulta ativa
+        let autoSaveTimer = null;
 
         const DOM = {
             btnMic: document.getElementById('btn-mic'),
@@ -496,10 +772,182 @@
             anamnesisBox: document.getElementById('anamnesis-output'),
             inpUrl: document.getElementById('ipagent-url'),
             inpToken: document.getElementById('ipagent-token'),
-            connStatus: document.getElementById('connection-status')
+            connStatus: document.getElementById('connection-status'),
+            consultationList: document.getElementById('consultation-list'),
+            sidebarEmpty: document.getElementById('sidebar-empty'),
+            toast: document.getElementById('toast')
         };
 
-        // Autopreenchimento de URL/Token se fornecido no GET (Integração Studio)
+        // =============================================
+        // TOAST NOTIFICATIONS
+        // =============================================
+        function showToast(message, type = 'info', duration = 3000) {
+            const t = DOM.toast;
+            t.textContent = '';
+            const iconMap = { success: '✅', error: '❌', info: 'ℹ️' };
+            t.innerHTML = `${iconMap[type] || ''} ${message}`;
+            t.className = `toast ${type}`;
+            setTimeout(() => t.classList.add('show'), 10);
+            setTimeout(() => t.classList.remove('show'), duration);
+        }
+
+        // =============================================
+        // FIREBASE: CRUD CONSULTAS
+        // =============================================
+        async function saveConsultation(status = 'recording') {
+            if (!isFirebaseReady) return;
+            if (!fullRawText.trim() && !currentAnamnesis.trim()) return;
+
+            const data = {
+                rawTranscript: fullRawText,
+                correctedTranscript: fullCorrectedText,
+                anamnesis: currentAnamnesis,
+                status: status,
+                updatedAt: serverTimestamp()
+            };
+
+            try {
+                if (currentDocId) {
+                    // Atualiza documento existente
+                    await updateDoc(doc(db, 'consultations', currentDocId), data);
+                } else {
+                    // Cria novo documento
+                    data.createdAt = serverTimestamp();
+                    const docRef = await addDoc(collection(db, 'consultations'), data);
+                    currentDocId = docRef.id;
+                    console.log("📄 Nova consulta criada:", currentDocId);
+                }
+                loadConsultations();
+            } catch(e) {
+                console.error("Erro ao salvar no Firestore:", e);
+                showToast("Erro ao salvar no Firebase", 'error');
+            }
+        }
+
+        async function loadConsultations() {
+            if (!isFirebaseReady) return;
+
+            try {
+                const q = query(collection(db, 'consultations'), orderBy('createdAt', 'desc'));
+                const snapshot = await getDocs(q);
+                
+                const list = DOM.consultationList;
+                list.innerHTML = '';
+
+                if (snapshot.empty) {
+                    list.innerHTML = `<div class="sidebar-empty"><span>📂</span>Nenhuma consulta salva ainda.<br><small style="opacity:0.6">Inicie uma transcrição para começar.</small></div>`;
+                    return;
+                }
+
+                snapshot.forEach(docSnap => {
+                    const d = docSnap.data();
+                    const id = docSnap.id;
+                    const date = d.createdAt ? d.createdAt.toDate() : new Date();
+                    const preview = (d.rawTranscript || '').substring(0, 80) || 'Consulta vazia';
+                    const statusClass = d.status === 'recording' ? 'recording' : d.status === 'paused' ? 'paused' : 'completed';
+                    const isActive = id === currentDocId;
+
+                    const card = document.createElement('div');
+                    card.className = `consultation-card${isActive ? ' active' : ''}`;
+                    card.onclick = () => loadConsultation(id);
+                    card.innerHTML = `
+                        <div class="cc-date">
+                            <span>${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</span>
+                            <span class="cc-status-dot ${statusClass}" title="${d.status || 'unknown'}"></span>
+                        </div>
+                        <div class="cc-preview">${preview}${(d.rawTranscript||'').length > 80 ? '...' : ''}</div>
+                    `;
+                    list.appendChild(card);
+                });
+            } catch(e) {
+                console.error("Erro ao carregar consultas:", e);
+            }
+        }
+
+        async function loadConsultation(docId) {
+            if (!isFirebaseReady) return;
+            
+            // Para gravação ativa se houver
+            if (isRecording) stopRecording();
+
+            try {
+                const q = query(collection(db, 'consultations'));
+                const snapshot = await getDocs(q);
+                let found = null;
+                snapshot.forEach(d => { if (d.id === docId) found = d.data(); });
+                
+                if (!found) { showToast("Consulta não encontrada", 'error'); return; }
+
+                currentDocId = docId;
+                fullRawText = found.rawTranscript || '';
+                fullCorrectedText = found.correctedTranscript || '';
+                currentAnamnesis = found.anamnesis || '';
+
+                DOM.rawBox.innerHTML = fullRawText || '<span class="interim-text" style="opacity:0.4">Sem transcrição</span>';
+                DOM.correctedBox.innerHTML = fullCorrectedText || '';
+                DOM.anamnesisBox.innerHTML = currentAnamnesis || '';
+
+                if (currentAnamnesis) {
+                    DOM.statusAnam.textContent = 'Carregado';
+                    DOM.statusAnam.className = 'status-badge active';
+                }
+
+                showToast("Consulta carregada", 'success');
+                loadConsultations(); // Destacar a ativa
+            } catch(e) {
+                console.error("Erro ao carregar consulta:", e);
+                showToast("Erro ao carregar consulta", 'error');
+            }
+        }
+
+        function newConsultation() {
+            if (isRecording) stopRecording();
+            
+            // Salva a atual antes de criar nova
+            if (currentDocId && fullRawText.trim()) {
+                saveConsultation('paused');
+            }
+
+            currentDocId = null;
+            fullRawText = '';
+            fullCorrectedText = '';
+            currentAnamnesis = '';
+            DOM.rawBox.innerHTML = '<span class="interim-text" style="opacity: 0.4;">Pressione "Iniciar Transcrição" para capturar o áudio ambiente...</span>';
+            DOM.correctedBox.innerHTML = '';
+            DOM.anamnesisBox.innerHTML = '';
+            DOM.statusAnam.textContent = 'Vazio';
+            DOM.statusAnam.className = 'status-badge';
+            DOM.statusMic.textContent = 'Parado';
+            DOM.statusMic.className = 'status-badge';
+
+            loadConsultations();
+            showToast("Nova consulta iniciada", 'info');
+        }
+
+        // Auto-save debounced (salva 5s após última atividade)
+        function scheduleAutoSave() {
+            if (autoSaveTimer) clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                if (fullRawText.trim()) {
+                    saveConsultation(isRecording ? 'recording' : 'paused');
+                }
+            }, 5000);
+        }
+
+        // Salvar manualmente
+        async function manualSave() {
+            if (!fullRawText.trim() && !currentAnamnesis.trim()) {
+                showToast("Nada para salvar ainda", 'info');
+                return;
+            }
+            const status = currentAnamnesis ? 'completed' : (isRecording ? 'recording' : 'paused');
+            await saveConsultation(status);
+            showToast("Consulta salva no Firebase!", 'success');
+        }
+
+        // =============================================
+        // AUTOPREENCHIMENTO URL/TOKEN
+        // =============================================
         window.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             if (params.has('url')) DOM.inpUrl.value = params.get('url');
@@ -507,7 +955,9 @@
             testConnection();
         });
 
-        // Testar Conexão Básica para "Status"
+        // =============================================
+        // CONEXÃO IPAGENT
+        // =============================================
         async function testConnection() {
             try {
                 const res = await fetch(`${DOM.inpUrl.value.trim()}/`);
@@ -533,7 +983,9 @@
             return headers;
         }
 
-        // Web Speech API Inicialização
+        // =============================================
+        // WEB SPEECH API
+        // =============================================
         function initSpeech() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
@@ -573,6 +1025,7 @@
                 if (finalTranscript) {
                     fullRawText += finalTranscript;
                     sendToIPagent(finalTranscript);
+                    scheduleAutoSave(); // Auto-save ao Firestore
                 }
 
                 DOM.rawBox.innerHTML = fullRawText + '<span class="interim-text">' + interimTranscript + '</span>';
@@ -596,6 +1049,7 @@
             
             if (isRecording) {
                 stopRecording();
+                saveConsultation('paused');
             } else {
                 await startSessionOnIPagent();
                 recognition.start();
@@ -614,7 +1068,9 @@
             DOM.statusMic.className = 'status-badge';
         }
 
-        // IPagent Interaction Logic
+        // =============================================
+        // IPAGENT API INTERACTION
+        // =============================================
         async function startSessionOnIPagent() {
             if(!isIPAgentAwake) await testConnection();
             try {
@@ -654,12 +1110,11 @@
                     
                     const span = document.createElement('span');
                     span.textContent = data.corrected + " ";
+                    fullCorrectedText += data.corrected + " ";
                     
-                    // Se o modelo refinou a frase (retirou vícios ou corrigiu termo médico)
                     const cleanOrig = data.original.trim().toLowerCase();
                     const cleanCorr = data.corrected.trim().toLowerCase();
                     
-                    // Se houver correção, aplica estilo Premium
                     if (cleanOrig !== cleanCorr && cleanCorr !== "") {
                         span.className = "correction-highlight";
                         span.title = `Original: ${data.original}`;
@@ -669,6 +1124,7 @@
                 } else {
                     const txt = document.createTextNode(textSegment + " [Recusado] ");
                     DOM.correctedBox.appendChild(txt);
+                    fullCorrectedText += textSegment + " ";
                 }
             } catch (error) {
                 console.error("Erro na API IPagent:", error);
@@ -676,6 +1132,7 @@
                 span.style.color = 'var(--text-muted)';
                 span.textContent = textSegment + " ";
                 DOM.correctedBox.appendChild(span);
+                fullCorrectedText += textSegment + " ";
             } finally {
                 DOM.correctedBox.scrollTop = DOM.correctedBox.scrollHeight;
                 DOM.statusApi.textContent = 'Online';
@@ -704,9 +1161,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     
-                    // O backend já pode devolver HTML formatado. Mas vamos tentar renderizar Markdown ou texto.
                     let htmlContent = data.anamnesis;
-                    // Seções simples de Markdown para HTML caso venha cru:
                     htmlContent = htmlContent.replace(/\*\*(.*?)\*\*/g, '<strong><span style="color:var(--text-highlight);">$1</span></strong>');
                     htmlContent = htmlContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
                     htmlContent = htmlContent.replace(/# (.*?)\n/g, '<h2 style="color:var(--primary); font-family: Outfit, sans-serif; margin-top:20px;">$1</h2>');
@@ -716,6 +1171,11 @@
                     DOM.statusAnam.textContent = "Concluído";
                     DOM.statusAnam.className = "status-badge active";
                     DOM.anamnesisBox.innerHTML = htmlContent;
+                    currentAnamnesis = htmlContent;
+
+                    // Auto-save como completed
+                    saveConsultation('completed');
+                    showToast("Prontuário gerado e salvo!", 'success');
                 } else {
                     throw new Error("Falha no IPagent");
                 }
@@ -726,6 +1186,13 @@
                 console.error(error);
             }
         }
+
+        // Expose to global scope (required because HTML onclick uses global functions)
+        window.toggleRecording = toggleRecording;
+        window.generateAnamnesis = generateAnamnesis;
+        window.manualSave = manualSave;
+        window.newConsultation = newConsultation;
+        window.loadConsultation = loadConsultation;
     </script>
 </body>
 </html>
