@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Consultations - open for now (will add auth later)
+    match /consultations/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

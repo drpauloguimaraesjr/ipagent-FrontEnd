@@ -706,6 +706,86 @@
             gap: 4px;
         }
 
+        /* Rating buttons */
+        .rating-bar {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            align-items: center;
+        }
+
+        .rating-bar .rating-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-right: 4px;
+        }
+
+        .rating-btn {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: var(--transition);
+        }
+
+        .rating-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            background: var(--accent-blue-glow);
+        }
+
+        .rating-btn.selected {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+            background: var(--accent-green-glow);
+        }
+
+        .rating-btn.selected-bad {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+            background: var(--accent-red-glow);
+        }
+
+        .rating-thanks {
+            font-size: 11px;
+            color: var(--accent-green);
+            animation: slideIn 0.3s ease;
+        }
+
+        /* Evolution dashboard mini */
+        .evo-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 8px;
+            font-size: 11px;
+        }
+
+        .evo-stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .evo-stat .value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .evo-stat .label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
         /* Chat mini (inside right column) */
         .chat-section {
             border-top: 1px solid var(--border);
@@ -1062,6 +1142,15 @@
         </div>
         <div class="sidebar-list" id="history-list">
             <div class="sidebar-empty" id="sidebar-empty"><span>📂</span>Carregando consultas...</div>
+        </div>
+        <div id="evo-dashboard" style="padding:8px;border-top:1px solid var(--border);display:none;">
+            <div style="font-size:11px;font-weight:600;color:var(--accent-indigo);margin-bottom:6px;">🧬 Evolução</div>
+            <div class="evo-stats">
+                <div class="evo-stat"><div class="value" id="evo-rating">-</div><div class="label">Rating</div></div>
+                <div class="evo-stat"><div class="value" id="evo-coverage">-</div><div class="label">RAG %</div></div>
+                <div class="evo-stat"><div class="value" id="evo-interactions">-</div><div class="label">Interações</div></div>
+                <div class="evo-stat"><div class="value" id="evo-satisfaction">-</div><div class="label">Satisfação</div></div>
+            </div>
         </div>
         <div class="sidebar-footer" id="sidebar-footer">
             <span id="fb-status-dot"
@@ -1634,6 +1723,26 @@
         setInterval(checkStatus, 10000);
 
         // ==========================================
+        // EVOLUTION DASHBOARD
+        // ==========================================
+        async function loadEvolutionStats() {
+            try {
+                const res = await apiFetch('/api/evolution/stats');
+                if (res.ok) {
+                    const data = await res.json();
+                    const dash = document.getElementById('evo-dashboard');
+                    dash.style.display = 'block';
+                    document.getElementById('evo-rating').textContent = data.avg_rating ? data.avg_rating.toFixed(1) : '-';
+                    document.getElementById('evo-coverage').textContent = data.rag_coverage_pct ? data.rag_coverage_pct + '%' : '-';
+                    document.getElementById('evo-interactions').textContent = data.total_interactions || '0';
+                    document.getElementById('evo-satisfaction').textContent = data.satisfaction_pct ? data.satisfaction_pct + '%' : '-';
+                }
+            } catch (e) { /* silently fail if endpoint not available */ }
+        }
+        loadEvolutionStats();
+        setInterval(loadEvolutionStats, 60000); // Atualiza a cada 1 min
+
+        // ==========================================
         // WAVEFORM
         // ==========================================
         function initWaveform(stream) {
@@ -1993,6 +2102,7 @@
                 }
                 const sp = card.querySelector('.spinner'); if (sp) sp.remove();
                 insightsList.push(full);
+                addRatingBar(card);
             } catch (e) { console.warn('Insight error:', e); }
             finally { isGeneratingInsight = false; }
         }
@@ -2034,10 +2144,42 @@
                         }
                     }
                 }
+                addRatingBar(card);
             } catch (e) { console.error('Chat error:', e); }
             chatInput.disabled = false;
             chatInput.focus();
         });
+
+        // ==========================================
+        // RATING (Feedback Loop para Auto-Evolução)
+        // ==========================================
+        function addRatingBar(card) {
+            const bar = document.createElement('div');
+            bar.className = 'rating-bar';
+            bar.innerHTML = `
+                <span class="rating-label">Avaliar:</span>
+                <button class="rating-btn" data-rating="1" title="Ruim">👎</button>
+                <button class="rating-btn" data-rating="2" title="Regular">😐</button>
+                <button class="rating-btn" data-rating="3" title="Bom">👍</button>
+                <button class="rating-btn" data-rating="4" title="Excelente">⭐</button>
+            `;
+            bar.querySelectorAll('.rating-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const rating = parseInt(btn.dataset.rating);
+                    try {
+                        await apiFetch('/api/chat/rate', {
+                            method: 'POST',
+                            body: JSON.stringify({ rating, feedback_text: '' })
+                        });
+                        bar.innerHTML = `<span class="rating-thanks">✓ Avaliação salva (${['','👎 Ruim','😐 Regular','👍 Bom','⭐ Excelente'][rating]})</span>`;
+                    } catch (e) {
+                        console.warn('Rating error:', e);
+                        bar.innerHTML = `<span style="color:var(--accent-red);font-size:11px;">Erro ao salvar</span>`;
+                    }
+                });
+            });
+            card.appendChild(bar);
+        }
 
         // ==========================================
         // EXPORT

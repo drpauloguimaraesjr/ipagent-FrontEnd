@@ -1,0 +1,9 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules",
+    "bucket": "ipagent-frontend.firebasestorage.app"
+  }
+}
