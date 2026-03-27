@@ -7,6 +7,10 @@
     <title>IPagent — Assistente Médico com IA (Frontend Client)</title>
     <meta name="description"
         content="Cliente frontend do IPagent para transcrição médica ao vivo com correção, anamnese em tempo real e fluxo de consciência IA.">
+    <meta name="theme-color" content="#4493f8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -34,17 +38,23 @@
             --accent-blue-hover: #3b82f6;
             --accent-blue-glow: rgba(68, 147, 248, 0.15);
             --accent-indigo: #8b5cf6;
+            --accent-indigo-glow: rgba(139, 92, 246, 0.15);
             --accent-teal: #2dd4bf;
             --accent-teal-glow: rgba(45, 212, 191, 0.15);
             --accent-red: #f85149;
             --accent-red-glow: rgba(248, 81, 73, 0.15);
             --accent-amber: #e3b341;
+            --accent-amber-glow: rgba(227, 179, 65, 0.15);
             --accent-green: #3fb950;
             --accent-green-glow: rgba(63, 185, 80, 0.15);
             --radius: 12px;
             --radius-sm: 8px;
             --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            --shadow-glow: 0 0 20px rgba(68, 147, 248, 0.1);
+            --glass: rgba(22, 27, 34, 0.85);
+            --glass-border: rgba(48, 54, 61, 0.6);
             --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
@@ -68,11 +78,31 @@
         .sidebar {
             width: 280px;
             min-width: 280px;
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--border);
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid var(--glass-border);
             display: flex;
             flex-direction: column;
             height: 100vh;
+            transition: transform 0.3s ease;
+            z-index: 50;
+        }
+
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 10px; left: 10px;
+            z-index: 60;
+            width: 36px; height: 36px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 18px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
         }
 
         .sidebar-header {
@@ -130,6 +160,7 @@
         .history-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
+            border-left: 3px solid var(--border);
             border-radius: var(--radius-sm);
             padding: 12px;
             margin-bottom: 6px;
@@ -140,11 +171,15 @@
         .history-card:hover {
             background: var(--bg-card-hover);
             border-color: var(--border-light);
+            border-left-color: var(--accent-blue);
+            transform: translateX(2px);
         }
 
         .history-card.active {
             border-color: var(--accent-blue);
+            border-left-color: var(--accent-blue);
             background: var(--accent-blue-glow);
+            box-shadow: var(--shadow-glow);
         }
 
         .history-card .hc-date {
@@ -232,14 +267,16 @@
 
         /* ===== HEADER (Top Bar) ===== */
         header {
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(28, 35, 51, 0.95) 100%);
+            border-bottom: 1px solid var(--glass-border);
             padding: 10px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 16px;
             min-height: 52px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         .header-left {
@@ -603,25 +640,25 @@
         }
 
         .mic-btn.idle:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 30px rgba(68, 147, 248, 0.4);
+            transform: scale(1.08);
+            box-shadow: 0 6px 30px rgba(68, 147, 248, 0.45);
         }
 
         .mic-btn.recording {
-            background: var(--accent-red);
+            background: linear-gradient(135deg, var(--accent-red) 0%, #e11d48 100%);
             box-shadow: 0 4px 20px rgba(248, 81, 73, 0.4);
-            animation: record-pulse 1.5s infinite;
+            animation: ring-pulse 1.5s ease infinite;
         }
 
-        @keyframes record-pulse {
-
-            0%,
-            100% {
-                box-shadow: 0 4px 20px rgba(248, 81, 73, 0.4);
+        @keyframes ring-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.5), 0 4px 20px rgba(248, 81, 73, 0.3);
             }
-
             50% {
-                box-shadow: 0 4px 40px rgba(248, 81, 73, 0.6);
+                box-shadow: 0 0 0 12px rgba(248, 81, 73, 0.1), 0 4px 20px rgba(248, 81, 73, 0.2);
+            }
+            100% {
+                box-shadow: 0 0 0 20px rgba(248, 81, 73, 0), 0 4px 20px rgba(248, 81, 73, 0.3);
             }
         }
 
@@ -1123,10 +1160,189 @@
             color: var(--text-primary);
         }
 
+        /* Global scrollbar styling */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+        /* Skeleton loading */
+        @keyframes skeleton-shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        /* Insight cards colored borders */
+        .insight-item {
+            border-left: 3px solid var(--accent-blue);
+            transition: var(--transition);
+        }
+        .insight-item:hover {
+            transform: translateX(2px);
+            border-left-color: var(--accent-indigo);
+        }
+
+        /* Slide in animation */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .insight-item { animation: slideIn 0.3s ease; }
+
+        /* Search box in sidebar */
+        .sidebar-search {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sidebar-search input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+        .sidebar-search input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px var(--accent-blue-glow);
+        }
+        .sidebar-search-wrap {
+            position: relative;
+        }
+        .sidebar-search-wrap::before {
+            content: '🔍';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+        }
+
+        /* Login modal specific */
+        .auth-container {
+            text-align: center;
+        }
+        .auth-container .logo-big {
+            width: 64px; height: 64px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 16px;
+            box-shadow: 0 8px 32px rgba(68, 147, 248, 0.3);
+        }
+        .auth-tabs {
+            display: flex;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+        .auth-tab.active {
+            background: var(--accent-blue-glow);
+            color: var(--accent-blue);
+        }
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding: 4px 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .user-badge:hover {
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+        .user-avatar {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 700; color: white;
+        }
+
+        /* Patient selector */
+        .patient-selector {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .patient-selector select {
+            padding: 5px 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .patient-selector select:focus {
+            border-color: var(--accent-blue);
+            outline: none;
+        }
+        .patient-add-btn {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            border: 1px dashed var(--border);
+            background: transparent;
+            color: var(--accent-blue);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            transition: var(--transition);
+        }
+        .patient-add-btn:hover {
+            border-color: var(--accent-blue);
+            background: var(--accent-blue-glow);
+        }
+
         /* Responsive */
         @media (max-width: 900px) {
             main {
                 grid-template-columns: 1fr;
+            }
+            .sidebar {
+                position: fixed;
+                left: 0; top: 0;
+                transform: translateX(-100%);
+                box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            header {
+                padding-left: 52px;
             }
         }
     </style>
@@ -1134,11 +1350,25 @@
 
 <body>
 
+    <!-- Sidebar toggle (mobile) -->
+    <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
     <!-- ===== SIDEBAR: Histórico ===== -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h2>📋 Consultas</h2>
             <button class="sidebar-new-btn" onclick="newConsultation()">+ Nova</button>
+        </div>
+        <div class="sidebar-search">
+            <div class="sidebar-search-wrap">
+                <input type="text" id="search-input" placeholder="Buscar consultas..." oninput="filterConsultations()">
+            </div>
+            <div style="display:flex;gap:4px;margin-top:6px;">
+                <button class="rating-btn" style="font-size:10px;padding:3px 8px;" onclick="setSearchFilter('all')" id="filter-all" data-active="true">Todos</button>
+                <button class="rating-btn" style="font-size:10px;padding:3px 8px;" onclick="setSearchFilter('today')">Hoje</button>
+                <button class="rating-btn" style="font-size:10px;padding:3px 8px;" onclick="setSearchFilter('week')">Semana</button>
+                <button class="rating-btn" style="font-size:10px;padding:3px 8px;" onclick="setSearchFilter('month')">Mês</button>
+            </div>
         </div>
         <div class="sidebar-list" id="history-list">
             <div class="sidebar-empty" id="sidebar-empty"><span>📂</span>Carregando consultas...</div>
@@ -1172,12 +1402,19 @@
                         </path>
                     </svg>
                 </div>
-                <span class="header-name">Dr. Paulo Guimarães Jr.</span>
+                <span class="header-name" id="header-doctor-name">IPagent</span>
                 <span id="connection-dot" class="status-dot"></span>
                 <span id="connection-text" style="font-size:11px; color:var(--text-muted);">Conectando...</span>
             </div>
 
             <div class="header-center">
+                <div class="patient-selector" id="patient-selector-wrap">
+                    <span style="font-size:11px;color:var(--text-muted);">👤</span>
+                    <select id="patient-select" onchange="onPatientSelect()">
+                        <option value="">Sem paciente</option>
+                    </select>
+                    <button class="patient-add-btn" onclick="openPatientModal()" title="Novo paciente">+</button>
+                </div>
                 <div class="clock">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
@@ -1194,12 +1431,17 @@
             </div>
 
             <div class="header-right">
+                <div class="user-badge" id="user-badge" onclick="openAuthModal()" style="display:none;">
+                    <div class="user-avatar" id="user-avatar">?</div>
+                    <span id="user-email-short">Login</span>
+                </div>
                 <span class="firebase-badge" id="firebase-badge">
                     <span id="fb-dot"
                         style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);"></span>
                     Firebase
                 </span>
                 <button class="header-btn" id="btn-save-firebase" onclick="manualSave()">💾 Salvar</button>
+                <button class="header-btn" id="btn-export-pdf" onclick="exportPDF()">📄 PDF</button>
                 <button class="header-btn" id="btn-back" onclick="location.reload()">Voltar</button>
                 <button class="header-btn danger" id="btn-end-session" onclick="endSession()">Encerrar Sessão</button>
                 <button class="header-icon-btn" id="btn-settings" title="Configurações">
@@ -1355,6 +1597,63 @@
         </div>
     </div>
 
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal" style="max-width:400px;">
+            <div class="auth-container">
+                <div class="logo-big">🧠</div>
+                <h3 style="margin-bottom:4px;">IPagent</h3>
+                <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Assistente Médico com IA</p>
+                <div class="auth-tabs">
+                    <button class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')">Entrar</button>
+                    <button class="auth-tab" id="auth-tab-register" onclick="switchAuthTab('register')">Registrar</button>
+                </div>
+                <div class="modal-input-group">
+                    <label>E-MAIL</label>
+                    <input type="email" id="auth-email" placeholder="seu@email.com">
+                </div>
+                <div class="modal-input-group">
+                    <label>SENHA</label>
+                    <input type="password" id="auth-password" placeholder="••••••••">
+                </div>
+                <div class="modal-input-group" id="auth-name-group" style="display:none;">
+                    <label>NOME (exibição)</label>
+                    <input type="text" id="auth-display-name" placeholder="Dr. João Silva">
+                </div>
+                <button class="modal-save-btn" id="auth-submit-btn" onclick="submitAuth()">Entrar</button>
+                <p id="auth-error" style="color:var(--accent-red);font-size:11px;margin-top:8px;"></p>
+                <p style="font-size:11px;color:var(--text-muted);margin-top:12px;cursor:pointer;" onclick="skipAuth()">Continuar sem login →</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Modal -->
+    <div id="patient-modal" class="modal-overlay">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <h3>👤 Novo Paciente</h3>
+                <button class="modal-close" onclick="closePatientModal()">✕</button>
+            </div>
+            <div class="modal-input-group">
+                <label>NOME COMPLETO</label>
+                <input type="text" id="patient-name" placeholder="Nome do paciente">
+            </div>
+            <div class="modal-input-group">
+                <label>DATA DE NASCIMENTO</label>
+                <input type="date" id="patient-dob">
+            </div>
+            <div class="modal-input-group">
+                <label>CPF (OPCIONAL)</label>
+                <input type="text" id="patient-cpf" placeholder="000.000.000-00">
+            </div>
+            <div class="modal-input-group">
+                <label>NOTAS</label>
+                <input type="text" id="patient-notes" placeholder="Observações">
+            </div>
+            <button class="modal-save-btn" onclick="createPatient()">Cadastrar Paciente</button>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
@@ -1380,8 +1679,9 @@
     <!-- ===== FIREBASE + APP LOGIC ===== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
         import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut as firebaseSignOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCrrA0taQ3ADGjFOSpLxYVBgRAmzFi-70E",
@@ -1392,16 +1692,41 @@
             appId: "1:457948404810:web:cb8de5f31b0d98af309ab3"
         };
 
-        let db, storage, isFirebaseReady = false;
+        let db, storage, auth, isFirebaseReady = false;
+        let currentUser = null;
+        let allConsultationsCache = [];
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             storage = getStorage(app);
+            auth = getAuth(app);
             isFirebaseReady = true;
             document.getElementById('firebase-badge').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);display:inline-block;"></span> Firebase';
             document.getElementById('fb-status-dot').style.background = 'var(--accent-green)';
             document.getElementById('fb-status-text').textContent = 'Firebase conectado';
+
+            // Auth state listener
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                const badge = document.getElementById('user-badge');
+                badge.style.display = 'flex';
+                if (user) {
+                    const name = user.displayName || user.email.split('@')[0];
+                    document.getElementById('header-doctor-name').textContent = name;
+                    document.getElementById('user-email-short').textContent = user.email.split('@')[0];
+                    document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
+                    flog(`\u{1F512} Logado como ${user.email}`, 'success');
+                } else {
+                    document.getElementById('header-doctor-name').textContent = 'IPagent';
+                    document.getElementById('user-email-short').textContent = 'Login';
+                    document.getElementById('user-avatar').textContent = '?';
+                }
+                loadConsultations();
+                loadPatients();
+            });
+
             loadConsultations();
+            loadPatients();
         } catch (e) {
             document.getElementById('firebase-badge').classList.add('offline');
             document.getElementById('firebase-badge').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-red);display:inline-block;"></span> Firebase OFF';
@@ -2201,6 +2526,12 @@
             const data = { rawTranscript: fullRawText, correctedTranscript: fullCorrectedText, anamnesis: currentAnamnesis, status, updatedAt: serverTimestamp() };
             if (audioUrl) data.audioUrl = audioUrl;
             if (duration) data.duration = duration;
+            if (currentUser) data.userId = currentUser.uid;
+            if (selectedPatientId) {
+                data.patientId = selectedPatientId;
+                const pat = patientsList.find(p => p.id === selectedPatientId);
+                if (pat) data.patientName = pat.name;
+            }
             try {
                 if (currentDocId) {
                     await updateDoc(doc(db, 'consultations', currentDocId), data);
@@ -2250,14 +2581,19 @@
                     const preview = (d.rawTranscript || '').substring(0, 80) || 'Sem transcrição';
                     const dur = d.duration ? `${Math.floor(d.duration / 60)}m${(d.duration % 60).toString().padStart(2, '0')}s` : '';
                     const st = d.status || 'paused';
+                    const patName = d.patientName || '';
                     const card = document.createElement('div');
                     card.className = `history-card${id === currentDocId ? ' active' : ''}`;
                     card.onclick = () => loadConsultation(id);
+                    card.dataset.preview = preview;
+                    card.dataset.patient = patName;
+                    card.dataset.date = date.toISOString();
                     card.innerHTML = `
                         <div class="hc-date">
                             <span>${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                             <span class="hc-status ${st}">${st}${dur ? ' · ' + dur : ''}</span>
                         </div>
+                        ${patName ? '<div style="font-size:11px;color:var(--accent-indigo);margin-bottom:4px;">👤 ' + patName + '</div>' : ''}
                         <div class="hc-preview">${preview}${(d.rawTranscript || '').length > 80 ? '...' : ''}</div>
                         ${d.audioUrl ? '<div class="hc-audio"><audio controls preload="none" src="' + d.audioUrl + '"></audio></div>' : ''}
                     `;
@@ -2316,6 +2652,260 @@
         }
 
         // ==========================================
+        // AUTH
+        // ==========================================
+        let authMode = 'login';
+        function openAuthModal() {
+            if (currentUser) {
+                if (confirm(`Logado como ${currentUser.email}.\nDeseja sair?`)) {
+                    firebaseSignOut(auth).then(() => {
+                        showToast('Logout realizado', 'info');
+                        flog('\u{1F513} Logout', 'info');
+                    });
+                }
+                return;
+            }
+            document.getElementById('auth-modal').classList.add('active');
+        }
+        function switchAuthTab(mode) {
+            authMode = mode;
+            document.getElementById('auth-tab-login').className = `auth-tab ${mode === 'login' ? 'active' : ''}`;
+            document.getElementById('auth-tab-register').className = `auth-tab ${mode === 'register' ? 'active' : ''}`;
+            document.getElementById('auth-name-group').style.display = mode === 'register' ? 'block' : 'none';
+            document.getElementById('auth-submit-btn').textContent = mode === 'login' ? 'Entrar' : 'Registrar';
+            document.getElementById('auth-error').textContent = '';
+        }
+        async function submitAuth() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const errorEl = document.getElementById('auth-error');
+            errorEl.textContent = '';
+            if (!email || !password) { errorEl.textContent = 'Preencha email e senha.'; return; }
+            try {
+                if (authMode === 'login') {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    const cred = await createUserWithEmailAndPassword(auth, email, password);
+                    const displayName = document.getElementById('auth-display-name').value.trim();
+                    if (displayName) await updateProfile(cred.user, { displayName });
+                }
+                document.getElementById('auth-modal').classList.remove('active');
+                showToast(authMode === 'login' ? 'Bem-vindo!' : 'Conta criada!', 'success');
+            } catch (e) {
+                const msgs = {
+                    'auth/user-not-found': 'Usu\u00e1rio n\u00e3o encontrado',
+                    'auth/wrong-password': 'Senha incorreta',
+                    'auth/email-already-in-use': 'E-mail j\u00e1 cadastrado',
+                    'auth/weak-password': 'Senha muito fraca (m\u00edn. 6 chars)',
+                    'auth/invalid-email': 'E-mail inv\u00e1lido'
+                };
+                errorEl.textContent = msgs[e.code] || e.message;
+            }
+        }
+        function skipAuth() {
+            document.getElementById('auth-modal').classList.remove('active');
+        }
+
+        // ==========================================
+        // PATIENTS
+        // ==========================================
+        let patientsList = [];
+        let selectedPatientId = null;
+
+        async function loadPatients() {
+            if (!isFirebaseReady) return;
+            try {
+                let q;
+                if (currentUser) {
+                    q = query(collection(db, 'patients'), where('userId', '==', currentUser.uid), orderBy('name'));
+                } else {
+                    q = query(collection(db, 'patients'), orderBy('name'));
+                }
+                const snap = await getDocs(q);
+                patientsList = [];
+                const select = document.getElementById('patient-select');
+                select.innerHTML = '<option value="">Sem paciente</option>';
+                snap.forEach(ds => {
+                    const p = { id: ds.id, ...ds.data() };
+                    patientsList.push(p);
+                    const opt = document.createElement('option');
+                    opt.value = ds.id;
+                    opt.textContent = p.name;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.warn('Load patients:', e); }
+        }
+
+        function openPatientModal() {
+            document.getElementById('patient-modal').classList.add('active');
+        }
+        function closePatientModal() {
+            document.getElementById('patient-modal').classList.remove('active');
+        }
+
+        async function createPatient() {
+            const name = document.getElementById('patient-name').value.trim();
+            if (!name) { showToast('Insira o nome', 'error'); return; }
+            const data = {
+                name,
+                dob: document.getElementById('patient-dob').value || null,
+                cpf: document.getElementById('patient-cpf').value.trim() || null,
+                notes: document.getElementById('patient-notes').value.trim() || null,
+                createdAt: serverTimestamp()
+            };
+            if (currentUser) data.userId = currentUser.uid;
+            try {
+                const ref = await addDoc(collection(db, 'patients'), data);
+                selectedPatientId = ref.id;
+                closePatientModal();
+                showToast(`Paciente ${name} cadastrado!`, 'success');
+                flog(`\u{1F464} Paciente criado: ${name}`, 'success');
+                await loadPatients();
+                document.getElementById('patient-select').value = ref.id;
+                // Clear form
+                document.getElementById('patient-name').value = '';
+                document.getElementById('patient-dob').value = '';
+                document.getElementById('patient-cpf').value = '';
+                document.getElementById('patient-notes').value = '';
+            } catch (e) { showToast('Erro ao salvar paciente', 'error'); }
+        }
+
+        function onPatientSelect() {
+            selectedPatientId = document.getElementById('patient-select').value || null;
+        }
+
+        // ==========================================
+        // SEARCH & FILTER
+        // ==========================================
+        let searchFilter = 'all';
+
+        function setSearchFilter(filter) {
+            searchFilter = filter;
+            document.querySelectorAll('.sidebar-search .rating-btn').forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+            filterConsultations();
+        }
+
+        function filterConsultations() {
+            const term = document.getElementById('search-input').value.toLowerCase().trim();
+            const now = new Date();
+            const cards = document.querySelectorAll('#history-list .history-card');
+            cards.forEach(card => {
+                const text = (card.dataset.preview || '').toLowerCase();
+                const patient = (card.dataset.patient || '').toLowerCase();
+                const dateStr = card.dataset.date || '';
+                let matchText = !term || text.includes(term) || patient.includes(term);
+                let matchDate = true;
+                if (searchFilter !== 'all' && dateStr) {
+                    const d = new Date(dateStr);
+                    const diff = (now - d) / 86400000;
+                    if (searchFilter === 'today') matchDate = diff < 1;
+                    else if (searchFilter === 'week') matchDate = diff < 7;
+                    else if (searchFilter === 'month') matchDate = diff < 30;
+                }
+                card.style.display = matchText && matchDate ? '' : 'none';
+            });
+        }
+
+        // ==========================================
+        // SIDEBAR TOGGLE (mobile)
+        // ==========================================
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // ==========================================
+        // PDF EXPORT
+        // ==========================================
+        async function exportPDF() {
+            if (!fullRawText.trim() && !currentAnamnesis) {
+                showToast('Nada para exportar', 'info');
+                return;
+            }
+            showToast('Gerando PDF...', 'info');
+            // Load jsPDF dynamically
+            if (!window.jspdf) {
+                const s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                document.head.appendChild(s);
+                await new Promise(r => { s.onload = r; });
+            }
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+            const margin = 20;
+            const pageW = 210 - margin * 2;
+            let y = margin;
+
+            function addText(text, size = 11, color = [33,33,33], bold = false) {
+                pdf.setFontSize(size);
+                pdf.setTextColor(...color);
+                if (bold) pdf.setFont('helvetica', 'bold');
+                else pdf.setFont('helvetica', 'normal');
+                const lines = pdf.splitTextToSize(text, pageW);
+                lines.forEach(line => {
+                    if (y > 270) { pdf.addPage(); y = margin; }
+                    pdf.text(line, margin, y);
+                    y += size * 0.45;
+                });
+                y += 3;
+            }
+
+            // Header
+            pdf.setFillColor(13, 17, 23);
+            pdf.rect(0, 0, 210, 35, 'F');
+            pdf.setTextColor(228, 237, 243);
+            pdf.setFontSize(18);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('IPagent \u2014 Relat\u00f3rio de Consulta', margin, 18);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            const doctorName = document.getElementById('header-doctor-name').textContent;
+            const patientName = document.getElementById('patient-select').selectedOptions[0]?.textContent || 'N/A';
+            pdf.text(`${doctorName} | Paciente: ${patientName} | ${new Date().toLocaleDateString('pt-BR')}`, margin, 28);
+            y = 45;
+
+            // Transcription
+            addText('TRANSCRI\u00c7\u00c3O', 14, [68, 147, 248], true);
+            addText(fullRawText || 'Sem transcri\u00e7\u00e3o.', 10, [100,100,100]);
+            y += 5;
+
+            // Corrected
+            if (fullCorrectedText.trim()) {
+                addText('TRANSCRI\u00c7\u00c3O CORRIGIDA', 14, [45, 212, 191], true);
+                addText(fullCorrectedText, 10, [100,100,100]);
+                y += 5;
+            }
+
+            // Anamnesis
+            if (currentAnamnesis) {
+                addText('ANAMNESE', 14, [139, 92, 246], true);
+                addText(currentAnamnesis, 10, [60,60,60]);
+                y += 5;
+            }
+
+            // Insights
+            if (insightsList.length > 0) {
+                addText('INSIGHTS DA IA', 14, [227, 179, 65], true);
+                insightsList.forEach((insight, i) => {
+                    addText(`${i+1}. ${insight}`, 10, [80,80,80]);
+                });
+            }
+
+            // Footer
+            const pageCount = pdf.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                pdf.setPage(i);
+                pdf.setFontSize(8);
+                pdf.setTextColor(150,150,150);
+                pdf.text(`Gerado por IPagent | ${new Date().toLocaleString('pt-BR')} | P\u00e1gina ${i}/${pageCount}`, margin, 290);
+            }
+
+            pdf.save(`consulta_${new Date().toISOString().slice(0,10)}.pdf`);
+            showToast('PDF gerado!', 'success');
+            flog('\u{1F4C4} PDF exportado', 'success');
+        }
+
+        // ==========================================
         // EXPOSE TO GLOBAL
         // ==========================================
         window.toggleRecording = toggleRecording;
@@ -2330,6 +2920,25 @@
         window.clearLogs = clearLogs;
         window.exportLogs = exportLogs;
         window.copyLogs = copyLogs;
+        window.openAuthModal = openAuthModal;
+        window.switchAuthTab = switchAuthTab;
+        window.submitAuth = submitAuth;
+        window.skipAuth = skipAuth;
+        window.openPatientModal = openPatientModal;
+        window.closePatientModal = closePatientModal;
+        window.createPatient = createPatient;
+        window.onPatientSelect = onPatientSelect;
+        window.setSearchFilter = setSearchFilter;
+        window.filterConsultations = filterConsultations;
+        window.toggleSidebar = toggleSidebar;
+        window.exportPDF = exportPDF;
+    </script>
+
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
     </script>
 
 </body>
