@@ -520,6 +520,46 @@
         .status-dot.online { background: var(--success); }
         .status-dot.offline { background: var(--destructive); }
 
+        /* Offline Banner */
+        .offline-banner {
+            background: hsl(0 55% 52% / 0.08);
+            border-bottom: 1px solid hsl(0 55% 52% / 0.2);
+            padding: 12px 24px;
+            animation: fadeInUp 0.3s ease;
+        }
+        .offline-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            max-width: 700px;
+            margin: 0 auto;
+            color: var(--destructive);
+        }
+        .offline-banner-content svg {
+            flex-shrink: 0;
+            opacity: 0.8;
+        }
+        .offline-banner-content strong {
+            font-family: 'Playfair Display', serif;
+            font-size: 14px;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .offline-banner-content p {
+            font-size: 12px;
+            color: var(--muted-fg);
+            margin: 0;
+            line-height: 1.5;
+        }
+        .offline-banner-content code {
+            background: var(--accent);
+            color: var(--primary-fg);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+        }
+
         .header-center {
             display: flex;
             align-items: center;
@@ -1628,6 +1668,21 @@
             </div>
         </header>
 
+        <!-- ===== OFFLINE BANNER ===== -->
+        <div id="offline-banner" class="offline-banner" style="display: none;">
+            <div class="offline-banner-content">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <div>
+                    <strong>Backend nao esta rodando</strong>
+                    <p>Abra o PowerShell no seu PC Windows e digite <code>ipagent</code> para iniciar o servidor.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== MAIN: 3 COLUMNS ===== -->
         <main>
 
@@ -1943,6 +1998,12 @@
         let baseUrl = localStorage.getItem('ipagent-url') || 'https://ipagent.app';
         let bearerToken = localStorage.getItem('ipagent-token') || '';
 
+        // Migrate old trycloudflare URLs to ipagent.app
+        if (baseUrl.includes('trycloudflare.com')) {
+            baseUrl = 'https://ipagent.app';
+            localStorage.setItem('ipagent-url', baseUrl);
+        }
+
         // ==========================================
         // UI ELEMENTS
         // ==========================================
@@ -2186,11 +2247,14 @@
 
         let lastConnectionState = null;
 
+        const offlineBanner = document.getElementById('offline-banner');
+
         async function checkStatus() {
             try {
                 const res = await fetch(`${baseUrl}/api/status`, { headers: getHeaders() });
                 if (res.ok) {
                     const data = await res.json();
+                    offlineBanner.style.display = 'none';
                     if (data.agent?.available) {
                         statusDot.className = 'status-dot online';
                         statusText.textContent = 'IA Online';
@@ -2215,7 +2279,10 @@
                 statusDot.className = 'status-dot offline';
                 statusText.textContent = 'Servidor offline';
                 connectionRetries++;
-                // Detect CORS vs network errors
+                // Show offline banner after 3 failed attempts
+                if (connectionRetries >= 3) {
+                    offlineBanner.style.display = 'block';
+                }
                 const errType = e.message?.includes('Failed to fetch') ? 'rede/CORS' : e.message;
                 if (lastConnectionState !== 'offline' || connectionRetries % 5 === 0) {
                     flog(`🔴 Conexão caiu — ${errType} (tentativa #${connectionRetries})`, 'error');
