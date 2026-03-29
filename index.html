@@ -135,6 +135,151 @@
             100% { background-position: 200% 0; }
         }
 
+        /* ===== DOUBLE-BUFFER ANIMATIONS ===== */
+        @keyframes slideLeftOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(-30px); }
+        }
+
+        @keyframes segmentFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fieldPulse {
+            0%, 100% { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+            50% { border-color: transparent; box-shadow: none; }
+        }
+
+        @keyframes correctionFlash {
+            0% { background: hsl(168 76% 36% / 0.25); }
+            100% { background: transparent; }
+        }
+
+        .buffer-transfer {
+            animation: slideLeftOut 0.4s ease-out forwards;
+        }
+
+        .segment-arrive {
+            animation: segmentFadeIn 0.3s ease;
+        }
+
+        .segment-correction-flash {
+            animation: correctionFlash 1.5s ease forwards;
+            border-radius: 3px;
+        }
+
+        .buffer-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: var(--muted-fg);
+            margin-bottom: 6px;
+            opacity: 0.6;
+        }
+
+        .buffer-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+
+        .buffer-dot.active {
+            background: var(--accent);
+        }
+
+        .buffer-dot.inactive {
+            background: var(--border);
+        }
+
+        /* ===== ANAMNESIS STRUCTURED FORM ===== */
+        .anamnesis-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .anamnesis-field {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .anamnesis-field.has-content {
+            border-left: 3px solid var(--success);
+        }
+
+        .anamnesis-field.updating {
+            animation: fieldPulse 1s ease infinite;
+        }
+
+        .anamnesis-field-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .anamnesis-field-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .anamnesis-field-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: background 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .anamnesis-field-dot.filled {
+            background: var(--success);
+        }
+
+        .anamnesis-field-content {
+            font-size: 0.85rem;
+            color: var(--fg);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            min-height: 18px;
+        }
+
+        .anamnesis-field-content:empty::before {
+            content: 'Aguardando dados...';
+            color: var(--muted-fg);
+            font-style: italic;
+            font-size: 0.8rem;
+        }
+
+        .anamnesis-field-content .sub-field {
+            display: flex;
+            gap: 6px;
+            align-items: baseline;
+            margin-bottom: 2px;
+        }
+
+        .anamnesis-field-content .sub-label {
+            font-size: 0.75rem;
+            color: var(--muted-fg);
+            font-weight: 500;
+            min-width: 80px;
+            flex-shrink: 0;
+        }
+
+        .anamnesis-field-content .sub-value {
+            font-size: 0.85rem;
+            color: var(--fg);
+        }
+
         /* ===== GLOBAL SCROLLBARS ===== */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -1725,10 +1870,89 @@
 
                     <div class="tab-content" id="tab-content-anamnesis">
                         <div class="generating-indicator" id="anamnesis-generating">
-                            <span class="spinner"></span> Gerando anamnese...
+                            <span class="spinner"></span> Extraindo dados da anamnese...
                         </div>
-                        <div class="empty-state" id="anamnesis-empty">A anamnese sera gerada aqui.</div>
+                        <div class="empty-state" id="anamnesis-empty">A anamnese sera preenchida progressivamente.</div>
                         <div id="anamnesis-container" class="anamnesis-text" style="display:none;"></div>
+                        <div id="anamnesis-form" class="anamnesis-form" style="display:none;">
+                            <div class="anamnesis-field" data-field="identificacao">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-identificacao"></span>
+                                    <span class="anamnesis-field-label">Identificacao</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-identificacao"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="queixa_principal">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-queixa_principal"></span>
+                                    <span class="anamnesis-field-label">Queixa Principal (QP)</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-queixa_principal"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="hda">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-hda"></span>
+                                    <span class="anamnesis-field-label">Historia da Doenca Atual (HDA)</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-hda"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="hpp">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-hpp"></span>
+                                    <span class="anamnesis-field-label">Historia Patologica Pregressa (HPP)</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-hpp"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="medicacoes">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-medicacoes"></span>
+                                    <span class="anamnesis-field-label">Medicacoes em Uso</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-medicacoes"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="alergias">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-alergias"></span>
+                                    <span class="anamnesis-field-label">Alergias</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-alergias"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="historia_familiar">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-historia_familiar"></span>
+                                    <span class="anamnesis-field-label">Historia Familiar</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-historia_familiar"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="habitos">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-habitos"></span>
+                                    <span class="anamnesis-field-label">Habitos de Vida</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-habitos"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="exame_fisico">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-exame_fisico"></span>
+                                    <span class="anamnesis-field-label">Exame Fisico</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-exame_fisico"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="hipotese_diagnostica">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-hipotese_diagnostica"></span>
+                                    <span class="anamnesis-field-label">Hipotese Diagnostica</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-hipotese_diagnostica"></div>
+                            </div>
+                            <div class="anamnesis-field" data-field="conduta">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot" id="dot-conduta"></span>
+                                    <span class="anamnesis-field-label">Conduta / Plano Terapeutico</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="field-conduta"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1770,7 +1994,13 @@
                     <div style="flex:1;"></div>
 
                     <div class="live-transcript-box">
-                        <div class="live-transcript-title">Transcricao em Tempo Real</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="live-transcript-title">Buffer de Captura</div>
+                            <div class="buffer-indicator" id="buffer-indicator">
+                                <span>A</span><span class="buffer-dot active" id="buf-dot-a"></span>
+                                <span>B</span><span class="buffer-dot inactive" id="buf-dot-b"></span>
+                            </div>
+                        </div>
                         <div class="live-transcript-text" id="live-transcript">
                             <span style="color:var(--muted-fg); font-style:italic;">Aguardando fala...</span>
                         </div>
@@ -1993,6 +2223,26 @@
         let mediaRecorder = null;
         let audioChunks = [];
         let recordingStartTime = null;
+
+        // Double-buffer system
+        let bufferA = { id: 'A', text: '', active: true, processing: false };
+        let bufferB = { id: 'B', text: '', active: false, processing: false };
+        let silenceTimer = null;
+        const SILENCE_THRESHOLD_MS = 1500;
+        let isExtractingAnamnesis = false;
+        let anamnesisFields = {
+            identificacao: '',
+            queixa_principal: '',
+            hda: '',
+            hpp: '',
+            medicacoes: '',
+            alergias: '',
+            historia_familiar: '',
+            habitos: '',
+            exame_fisico: '',
+            hipotese_diagnostica: '',
+            conduta: ''
+        };
 
         // Base URL (from settings or URL params)
         let baseUrl = localStorage.getItem('ipagent-url') || 'https://ipagent.app';
@@ -2384,15 +2634,25 @@
                     if (event.results[i].isFinal) final += event.results[i][0].transcript + ' ';
                     else interim += event.results[i][0].transcript;
                 }
+
+                const activeBuffer = bufferA.active ? bufferA : bufferB;
+
                 if (final.trim()) {
+                    activeBuffer.text += final;
                     fullRawText += final;
-                    addTranscript(final.trim());
-                    enqueueCorrection(final.trim());
+
+                    // Show in middle column (buffer zone)
+                    updateBufferDisplay(activeBuffer);
+
                     apiFetch('/api/transcription/update', {
                         method: 'POST',
                         body: JSON.stringify({ text: final.trim() })
                     }).catch(() => { });
                     scheduleAutoSave();
+
+                    // Reset silence timer -- on silence, flush buffer
+                    if (silenceTimer) clearTimeout(silenceTimer);
+                    silenceTimer = setTimeout(() => flushActiveBuffer(), SILENCE_THRESHOLD_MS);
                 }
                 if (interim) showLiveInterim(interim);
             };
@@ -2406,18 +2666,44 @@
         }
 
         // ==========================================
-        // TRANSCRIPTION UI
+        // TRANSCRIPTION UI (Double-Buffer System)
         // ==========================================
-        function addTranscript(text) {
-            transcriptionEmpty.style.display = 'none';
-            transcriptionContainer.style.display = 'block';
-            const span = document.createElement('span');
-            span.className = 'transcript-segment';
-            span.setAttribute('data-raw', text);
-            span.textContent = text + ' ';
-            transcriptionContainer.appendChild(span);
-            transcriptionContainer.scrollTo(0, transcriptionContainer.scrollHeight);
-            showLiveFinal(text);
+
+        function getActiveBuffer() {
+            return bufferA.active ? bufferA : bufferB;
+        }
+
+        function getInactiveBuffer() {
+            return bufferA.active ? bufferB : bufferA;
+        }
+
+        function updateBufferIndicator() {
+            const dotA = document.getElementById('buf-dot-a');
+            const dotB = document.getElementById('buf-dot-b');
+            if (dotA && dotB) {
+                dotA.className = `buffer-dot ${bufferA.active ? 'active' : 'inactive'}`;
+                dotB.className = `buffer-dot ${bufferB.active ? 'active' : 'inactive'}`;
+            }
+        }
+
+        function updateBufferDisplay(buffer) {
+            // Middle column shows ONLY the current buffer text
+            const it = liveTranscript.querySelector('.interim-text');
+            const ph = liveTranscript.querySelector('[style*="italic"]');
+            if (ph) ph.remove();
+
+            // Clear everything except interim
+            Array.from(liveTranscript.children).forEach(c => {
+                if (!c.classList.contains('interim-text')) c.remove();
+            });
+
+            if (buffer.text.trim()) {
+                const s = document.createElement('span');
+                s.className = 'transcript-segment';
+                s.textContent = buffer.text.trim();
+                liveTranscript.insertBefore(s, it || null);
+            }
+            liveTranscript.scrollTop = liveTranscript.scrollHeight;
         }
 
         function showLiveInterim(text) {
@@ -2426,12 +2712,59 @@
             el.textContent = text;
         }
 
-        function showLiveFinal(text) {
-            const it = liveTranscript.querySelector('.interim-text'); if (it) it.remove();
-            const ph = liveTranscript.querySelector('[style*="italic"]'); if (ph) ph.remove();
-            const s = document.createElement('span'); s.className = 'transcript-segment'; s.textContent = text + ' ';
-            liveTranscript.appendChild(s);
-            liveTranscript.scrollTop = liveTranscript.scrollHeight;
+        function flushActiveBuffer() {
+            const active = getActiveBuffer();
+            if (!active.text.trim()) return;
+
+            const textToProcess = active.text.trim();
+            active.processing = true;
+
+            // Animate the text sliding left in the middle column
+            const segments = liveTranscript.querySelectorAll('.transcript-segment');
+            segments.forEach(s => s.classList.add('buffer-transfer'));
+
+            // Switch to the other buffer immediately
+            active.active = false;
+            const other = getInactiveBuffer();
+            // If the other buffer is still processing, we wait -- but text goes to it anyway
+            other.active = true;
+            other.text = '';
+            updateBufferIndicator();
+
+            // After animation, clear middle column and process the text
+            setTimeout(() => {
+                // Clear the middle column for next segment
+                liveTranscript.innerHTML = '<span style="color:var(--muted-fg); font-style:italic;">Aguardando fala...</span>';
+
+                // Transfer the segment to left column (Tab 1)
+                addSegmentToTranscript(textToProcess);
+
+                // Enqueue correction
+                enqueueCorrection(textToProcess);
+
+                // Extract anamnesis data from this segment
+                extractAnamnesisFromSegment(textToProcess);
+
+                // Mark buffer as done
+                active.processing = false;
+                active.text = '';
+            }, 400); // matches slideLeftOut animation duration
+        }
+
+        function addSegmentToTranscript(text) {
+            transcriptionEmpty.style.display = 'none';
+            transcriptionContainer.style.display = 'block';
+            const span = document.createElement('span');
+            span.className = 'transcript-segment segment-arrive';
+            span.setAttribute('data-raw', text);
+            span.textContent = text + ' ';
+            transcriptionContainer.appendChild(span);
+            transcriptionContainer.scrollTo(0, transcriptionContainer.scrollHeight);
+        }
+
+        // Legacy function kept for compatibility (used by applyCorrectionToUI)
+        function addTranscript(text) {
+            addSegmentToTranscript(text);
         }
 
         // ==========================================
@@ -2465,10 +2798,10 @@
             for (const seg of segs) {
                 if (seg.getAttribute('data-raw') === original) {
                     seg.textContent = corrected + ' ';
-                    seg.style.color = 'var(--accent)';
-                    setTimeout(() => { seg.style.color = ''; }, 2000);
+                    seg.classList.add('segment-correction-flash');
+                    setTimeout(() => { seg.classList.remove('segment-correction-flash'); }, 1500);
                     if (terms && terms.toLowerCase() !== 'nenhum') {
-                        const b = document.createElement('span'); b.className = 'correction-badge'; b.textContent = '✓ corrigido';
+                        const b = document.createElement('span'); b.className = 'correction-badge'; b.textContent = '\u2713 corrigido';
                         seg.appendChild(b);
                     }
                     break;
@@ -2497,6 +2830,21 @@
                 liveTranscript.innerHTML = '<span style="color:var(--muted-fg); font-style:italic;">Aguardando fala...</span>';
                 fullRawText = ''; fullCorrectedText = ''; currentAnamnesis = '';
                 lastTranscriptLength = 0; insightsList = [];
+
+                // Reset double-buffer system
+                bufferA = { id: 'A', text: '', active: true, processing: false };
+                bufferB = { id: 'B', text: '', active: false, processing: false };
+                if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+                updateBufferIndicator();
+
+                // Reset anamnesis fields
+                anamnesisFields = { identificacao: '', queixa_principal: '', hda: '', hpp: '', medicacoes: '', alergias: '', historia_familiar: '', habitos: '', exame_fisico: '', hipotese_diagnostica: '', conduta: '' };
+                isExtractingAnamnesis = false;
+                document.getElementById('anamnesis-form').style.display = 'none';
+                document.getElementById('anamnesis-empty').style.display = 'block';
+                document.querySelectorAll('.anamnesis-field-content').forEach(el => el.textContent = '');
+                document.querySelectorAll('.anamnesis-field-dot').forEach(d => d.classList.remove('filled'));
+                document.querySelectorAll('.anamnesis-field').forEach(f => f.classList.remove('has-content', 'updating'));
                 insightsContainer.innerHTML = '<div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>';
                 currentDocId = null;
                 recordingStartTime = Date.now();
@@ -2525,6 +2873,15 @@
                 document.getElementById('audio-status').textContent = 'Salvando sessão...';
                 document.getElementById('audio-status-icon').textContent = '💾';
                 stopSessionTimer(); stopAnamnesisTimer(); stopInsightsTimer();
+                if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+                // Flush any remaining text in the active buffer
+                const remainingBuffer = getActiveBuffer();
+                if (remainingBuffer.text.trim()) {
+                    addSegmentToTranscript(remainingBuffer.text.trim());
+                    enqueueCorrection(remainingBuffer.text.trim());
+                    remainingBuffer.text = '';
+                }
+                liveTranscript.innerHTML = '<span style="color:var(--muted-fg); font-style:italic;">Sessao encerrada</span>';
                 if (speechRecognition) speechRecognition.stop();
 
                 // Stop MediaRecorder and upload audio
@@ -2581,42 +2938,166 @@
         }
 
         // ==========================================
-        // ANAMNESIS
+        // ANAMNESIS (Progressive Field Extraction)
         // ==========================================
         function startAnamnesisTimer() {
+            // The timer now triggers periodic field extraction from accumulated transcript
             anamnesisTimer = setInterval(() => {
-                if (lastConnectionState !== 'online') return; // skip if backend offline
+                if (lastConnectionState !== 'online') return;
                 const len = transcriptionContainer.innerText.length;
-                if (len - lastTranscriptLength > 50) { generateAnamnesis(); lastTranscriptLength = len; }
+                if (len - lastTranscriptLength > 50) {
+                    // Extract from the most recent portion of the transcript
+                    const recentText = transcriptionContainer.innerText.slice(lastTranscriptLength);
+                    if (recentText.trim()) {
+                        extractAnamnesisFromSegment(recentText.trim());
+                    }
+                    lastTranscriptLength = len;
+                }
             }, 30000);
         }
         function stopAnamnesisTimer() { if (anamnesisTimer) { clearInterval(anamnesisTimer); anamnesisTimer = null; } }
 
-        async function generateAnamnesis() {
-            const gen = document.getElementById('anamnesis-generating');
-            const container = document.getElementById('anamnesis-container');
+        function showAnamnesisForm() {
+            const form = document.getElementById('anamnesis-form');
             const empty = document.getElementById('anamnesis-empty');
-            const badge = document.getElementById('anamnesis-badge');
+            if (form) form.style.display = 'flex';
+            if (empty) empty.style.display = 'none';
+        }
+
+        function updateAnamnesisField(fieldKey, newContent) {
+            const el = document.getElementById(`field-${fieldKey}`);
+            const dot = document.getElementById(`dot-${fieldKey}`);
+            const fieldEl = el?.closest('.anamnesis-field');
+            if (!el) return;
+
+            showAnamnesisForm();
+
+            // If field already has content, append (don't overwrite)
+            const existing = anamnesisFields[fieldKey] || '';
+            if (existing && newContent) {
+                // Only append if not already present
+                if (!existing.toLowerCase().includes(newContent.toLowerCase().substring(0, 30))) {
+                    anamnesisFields[fieldKey] = existing + '\n' + newContent;
+                } else {
+                    return; // already contains this info
+                }
+            } else if (newContent) {
+                anamnesisFields[fieldKey] = newContent;
+            }
+
+            el.textContent = anamnesisFields[fieldKey];
+
+            // Show green dot if field has content
+            if (dot && anamnesisFields[fieldKey].trim()) {
+                dot.classList.add('filled');
+            }
+            if (fieldEl && anamnesisFields[fieldKey].trim()) {
+                fieldEl.classList.add('has-content');
+            }
+
+            // Pulse animation for update
+            if (fieldEl) {
+                fieldEl.classList.add('updating');
+                setTimeout(() => fieldEl.classList.remove('updating'), 1500);
+            }
+
+            // Update badge on tab
+            if (!document.getElementById('tab-anamnesis').classList.contains('active')) {
+                document.getElementById('anamnesis-badge').style.display = 'inline-block';
+            }
+
+            // Keep currentAnamnesis in sync for export/save
+            rebuildCurrentAnamnesis();
+        }
+
+        function rebuildCurrentAnamnesis() {
+            const labels = {
+                identificacao: 'IDENTIFICACAO',
+                queixa_principal: 'QUEIXA PRINCIPAL',
+                hda: 'HISTORIA DA DOENCA ATUAL (HDA)',
+                hpp: 'HISTORIA PATOLOGICA PREGRESSA (HPP)',
+                medicacoes: 'MEDICACOES EM USO',
+                alergias: 'ALERGIAS',
+                historia_familiar: 'HISTORIA FAMILIAR',
+                habitos: 'HABITOS DE VIDA',
+                exame_fisico: 'EXAME FISICO',
+                hipotese_diagnostica: 'HIPOTESE DIAGNOSTICA',
+                conduta: 'CONDUTA / PLANO TERAPEUTICO'
+            };
+            let text = '';
+            for (const [key, label] of Object.entries(labels)) {
+                const val = anamnesisFields[key] || 'nao informado';
+                text += `[${label}]\n${val}\n\n`;
+            }
+            currentAnamnesis = text.trim();
+        }
+
+        async function extractAnamnesisFromSegment(segmentText) {
+            if (isExtractingAnamnesis || !segmentText.trim()) return;
+            if (lastConnectionState !== 'online') return;
+            isExtractingAnamnesis = true;
+
+            const gen = document.getElementById('anamnesis-generating');
             gen.style.display = 'flex';
+
+            const prompt = `Voce e um assistente medico. Dado este trecho de transcricao de uma consulta medica, extraia APENAS as informacoes relevantes e retorne um JSON puro (sem markdown, sem \`\`\`) com os campos da anamnese que devem ser atualizados. Use SOMENTE estas chaves: identificacao, queixa_principal, hda, hpp, medicacoes, alergias, historia_familiar, habitos, exame_fisico, hipotese_diagnostica, conduta. Inclua APENAS os campos que tem informacao nova neste trecho. Se nenhum campo se aplica, retorne {}.
+
+Trecho da transcricao:
+"${segmentText.substring(0, 1000)}"
+
+Retorne APENAS o JSON, sem explicacao.`;
+
             try {
-                const res = await apiFetch('/api/anamnesis/generate', {
-                    method: 'POST', body: JSON.stringify({})
+                const res = await apiFetch('/api/chat/stream', {
+                    method: 'POST',
+                    body: JSON.stringify({ message: prompt, use_context: false })
                 });
-                const data = await res.json();
-                if ((data.status === 'success' || res.ok) && data.anamnesis) {
-                    empty.style.display = 'none';
-                    container.style.display = 'block';
-                    currentAnamnesis = data.anamnesis;
-                    container.innerHTML = data.anamnesis
-                        .replace(/\[([^\]]+)\]/g, '<strong style="color:var(--accent);">[$1]</strong>')
-                        .replace(/não informado/gi, '<span style="color:var(--muted-fg); font-style:italic;">não informado</span>')
-                        .replace(/\n/g, '<br>');
-                    if (!document.getElementById('tab-anamnesis').classList.contains('active')) {
-                        badge.style.display = 'inline-block';
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let full = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    for (const line of decoder.decode(value).split('\n')) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const j = JSON.parse(line.slice(6));
+                                if (j.token) full += j.token;
+                            } catch { }
+                        }
                     }
                 }
-            } catch (e) { console.warn('Anamnese error:', e); }
-            finally { gen.style.display = 'none'; }
+
+                // Parse the JSON response
+                try {
+                    // Clean up any markdown code fences
+                    let cleaned = full.trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '').trim();
+                    const fields = JSON.parse(cleaned);
+                    for (const [key, value] of Object.entries(fields)) {
+                        if (anamnesisFields.hasOwnProperty(key) && value && typeof value === 'string' && value.trim()) {
+                            updateAnamnesisField(key, value.trim());
+                        }
+                    }
+                    if (isVerbose()) flog(`Anamnese: campos atualizados: ${Object.keys(fields).join(', ')}`, 'info');
+                } catch (parseErr) {
+                    if (isVerbose()) flog(`Anamnese parse error: ${parseErr.message}`, 'warn');
+                }
+            } catch (e) {
+                if (isVerbose()) flog(`Anamnese extraction error: ${e.message}`, 'warn');
+            } finally {
+                gen.style.display = 'none';
+                isExtractingAnamnesis = false;
+            }
+        }
+
+        // Legacy generateAnamnesis for backward compatibility (called on stop recording)
+        async function generateAnamnesis() {
+            if (!fullRawText.trim()) return;
+            // On session end, do one final extraction pass on full text
+            const fullText = fullRawText.substring(0, 3000);
+            await extractAnamnesisFromSegment(fullText);
         }
 
         // ==========================================
@@ -2870,10 +3351,12 @@
                 transcriptionContainer.innerHTML = fullRawText ? `<span class="transcript-segment">${fullRawText}</span>` : '';
                 const anamC = document.getElementById('anamnesis-container');
                 const anamE = document.getElementById('anamnesis-empty');
+                const anamF = document.getElementById('anamnesis-form');
                 if (currentAnamnesis) {
                     anamE.style.display = 'none'; anamC.style.display = 'block';
+                    if (anamF) anamF.style.display = 'none';
                     anamC.innerHTML = currentAnamnesis.replace(/\[([^\]]+)\]/g, '<strong style="color:var(--accent);">[$1]</strong>').replace(/não informado/gi, '<span style="color:var(--muted-fg);font-style:italic;">não informado</span>').replace(/\n/g, '<br>');
-                } else { anamE.style.display = 'block'; anamC.style.display = 'none'; }
+                } else { anamE.style.display = 'block'; anamC.style.display = 'none'; if (anamF) anamF.style.display = 'none'; }
                 // Session info
                 const date = found.createdAt ? found.createdAt.toDate() : new Date();
                 const dur = found.duration ? ` | Duração: ${Math.floor(found.duration / 60)}m${(found.duration % 60).toString().padStart(2, '0')}s` : '';
@@ -2893,9 +3376,17 @@
             transcriptionContainer.style.display = 'none';
             document.getElementById('anamnesis-container').style.display = 'none';
             document.getElementById('anamnesis-empty').style.display = 'block';
+            document.getElementById('anamnesis-form').style.display = 'none';
+            document.querySelectorAll('.anamnesis-field-content').forEach(el => el.textContent = '');
+            document.querySelectorAll('.anamnesis-field-dot').forEach(d => d.classList.remove('filled'));
+            document.querySelectorAll('.anamnesis-field').forEach(f => f.classList.remove('has-content', 'updating'));
+            anamnesisFields = { identificacao: '', queixa_principal: '', hda: '', hpp: '', medicacoes: '', alergias: '', historia_familiar: '', habitos: '', exame_fisico: '', hipotese_diagnostica: '', conduta: '' };
             document.getElementById('session-info').textContent = 'Inicie uma sessão para começar.';
             document.getElementById('session-timer').textContent = '00:00';
             liveTranscript.innerHTML = '<span style="color:var(--muted-fg); font-style:italic;">Aguardando fala...</span>';
+            bufferA = { id: 'A', text: '', active: true, processing: false };
+            bufferB = { id: 'B', text: '', active: false, processing: false };
+            updateBufferIndicator();
             insightsContainer.innerHTML = '<div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>';
             showToast('Nova consulta', 'info');
             loadConsultations();
@@ -3182,6 +3673,8 @@
         window.filterConsultations = filterConsultations;
         window.toggleSidebar = toggleSidebar;
         window.exportPDF = exportPDF;
+        window.flushActiveBuffer = flushActiveBuffer;
+        window.extractAnamnesisFromSegment = extractAnamnesisFromSegment;
     </script>
 
     <script>
