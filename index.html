@@ -1586,8 +1586,8 @@
             </div>
             <div class="modal-input-group">
                 <label>URL do IPagent (Backend)</label>
-                <input type="text" id="ipagent-url" value="http://127.0.0.1:5000"
-                    placeholder="Ex: http://localhost:5000 ou https://seu-tunel.trycloudflare.com">
+                <input type="text" id="ipagent-url" value="https://ipagent.app"
+                    placeholder="Ex: https://ipagent.app ou http://localhost:5000">
             </div>
             <div class="modal-input-group">
                 <label>Bearer Token (Opcional)</label>
@@ -1762,7 +1762,7 @@
         let recordingStartTime = null;
 
         // Base URL (from settings or URL params)
-        let baseUrl = localStorage.getItem('ipagent-url') || 'http://127.0.0.1:5000';
+        let baseUrl = localStorage.getItem('ipagent-url') || 'https://ipagent.app';
         let bearerToken = localStorage.getItem('ipagent-token') || '';
 
         // ==========================================
