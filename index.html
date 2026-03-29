@@ -1044,6 +1044,22 @@
             vertical-align: middle;
         }
 
+        /* Buffer transfer animation */
+        @keyframes slideLeftOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(-40px); }
+        }
+        @keyframes segmentFadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .buffer-transferring {
+            animation: slideLeftOut 0.4s ease-out forwards;
+        }
+        .segment-new {
+            animation: segmentFadeIn 0.3s ease;
+        }
+
         /* ===== CENTER: Audio Control ===== */
         .audio-section {
             display: flex;
@@ -2647,23 +2663,37 @@
             speechRecognition.interimResults = true;
             speechRecognition.lang = 'pt-BR';
 
+            let bufferFlushTimer = null;
+            const BUFFER_FLUSH_DELAY = 1500; // 1.5s silence triggers flush
+
             speechRecognition.onresult = (event) => {
                 let interim = '', final = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) final += event.results[i][0].transcript + ' ';
                     else interim += event.results[i][0].transcript;
                 }
+
+                // Show interim text in middle column (live preview)
+                if (interim) showLiveInterim(interim);
+
                 if (final.trim()) {
                     fullRawText += final;
-                    addTranscript(final.trim());
-                    enqueueCorrection(final.trim());
+
+                    // Show final text in middle column buffer
+                    showBufferText(final.trim());
+
+                    // Send to backend
                     apiFetch('/api/transcription/update', {
                         method: 'POST',
                         body: JSON.stringify({ text: final.trim() })
                     }).catch(() => { });
+
+                    // Reset flush timer — flush after 1.5s of silence
+                    if (bufferFlushTimer) clearTimeout(bufferFlushTimer);
+                    bufferFlushTimer = setTimeout(() => flushBuffer(), BUFFER_FLUSH_DELAY);
+
                     scheduleAutoSave();
                 }
-                if (interim) showLiveInterim(interim);
             };
 
             speechRecognition.onerror = (e) => {
@@ -2677,16 +2707,23 @@
         // ==========================================
         // TRANSCRIPTION UI
         // ==========================================
-        function addTranscript(text) {
-            transcriptionEmpty.style.display = 'none';
-            transcriptionContainer.style.display = 'block';
-            const span = document.createElement('span');
-            span.className = 'transcript-segment';
-            span.setAttribute('data-raw', text);
-            span.textContent = text + ' ';
-            transcriptionContainer.appendChild(span);
-            transcriptionContainer.scrollTo(0, transcriptionContainer.scrollHeight);
-            showLiveFinal(text);
+        // Buffer: accumulates text in middle column
+        let bufferTexts = []; // segments waiting in the buffer
+
+        function showBufferText(text) {
+            // Remove placeholder and interim
+            const ph = liveTranscript.querySelector('[style*="italic"]'); if (ph) ph.remove();
+            const it = liveTranscript.querySelector('.interim-text'); if (it) it.remove();
+
+            // Add segment to middle column buffer
+            const s = document.createElement('span');
+            s.className = 'transcript-segment';
+            s.textContent = text + ' ';
+            liveTranscript.appendChild(s);
+            liveTranscript.scrollTop = liveTranscript.scrollHeight;
+
+            // Track for flush
+            bufferTexts.push(text);
         }
 
         function showLiveInterim(text) {
@@ -2695,12 +2732,37 @@
             el.textContent = text;
         }
 
-        function showLiveFinal(text) {
-            const it = liveTranscript.querySelector('.interim-text'); if (it) it.remove();
-            const ph = liveTranscript.querySelector('[style*="italic"]'); if (ph) ph.remove();
-            const s = document.createElement('span'); s.className = 'transcript-segment'; s.textContent = text + ' ';
-            liveTranscript.appendChild(s);
-            liveTranscript.scrollTop = liveTranscript.scrollHeight;
+        function flushBuffer() {
+            if (!bufferTexts.length) return;
+
+            const textsToFlush = [...bufferTexts];
+            bufferTexts = [];
+
+            // Animate middle column content sliding out
+            liveTranscript.classList.add('buffer-transferring');
+
+            setTimeout(() => {
+                // Transfer each segment to left column
+                textsToFlush.forEach(text => {
+                    addToTranscript(text);
+                    enqueueCorrection(text);
+                });
+
+                // Clear middle column
+                liveTranscript.innerHTML = '<span style="color:var(--muted-fg); font-style:italic;">Aguardando fala...</span>';
+                liveTranscript.classList.remove('buffer-transferring');
+            }, 400); // match animation duration
+        }
+
+        function addToTranscript(text) {
+            transcriptionEmpty.style.display = 'none';
+            transcriptionContainer.style.display = 'block';
+            const span = document.createElement('span');
+            span.className = 'transcript-segment segment-new';
+            span.setAttribute('data-raw', text);
+            span.textContent = text + ' ';
+            transcriptionContainer.appendChild(span);
+            transcriptionContainer.scrollTo(0, transcriptionContainer.scrollHeight);
         }
 
         // ==========================================
@@ -2797,6 +2859,8 @@
                 document.getElementById('audio-status-icon').textContent = '💾';
                 stopSessionTimer(); stopAnamnesisTimer(); stopInsightsTimer();
                 if (speechRecognition) speechRecognition.stop();
+                // Flush remaining buffer to transcript
+                flushBuffer();
 
                 // Stop MediaRecorder and upload audio
                 const duration = recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0;
@@ -3019,7 +3083,13 @@ ${segmentText}
                 const sp = card.querySelector('.spinner'); if (sp) sp.remove();
                 insightsList.push(full);
                 addRatingBar(card);
-            } catch (e) { console.warn('Insight error:', e); }
+            } catch (e) {
+                console.warn('Insight error:', e);
+                // Remove spinner and show error state on failure
+                const sp = card?.querySelector('.spinner'); if (sp) sp.remove();
+                const textEl = card?.querySelector('.insight-text');
+                if (textEl && !textEl.textContent) textEl.textContent = '(sem resposta — backend offline?)';
+            }
             finally { isGeneratingInsight = false; }
         }
 
