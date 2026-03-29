@@ -3,19 +3,15 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Consultations - authenticated users only see their own data
     match /consultations/{docId} {
-      allow read, write: if true;
-      // TODO: Enable auth rules when ready:
-      // allow read, write: if request.auth != null && (
-      //   resource == null || resource.data.userId == request.auth.uid
-      // );
+      allow read, write: if request.auth != null && (
+        resource == null || resource.data.userId == request.auth.uid
+      );
     }
     // Patients
     match /patients/{docId} {
-      allow read, write: if true;
-      // TODO: Enable auth rules when ready:
-      // allow read, write: if request.auth != null && (
-      //   resource == null || resource.data.userId == request.auth.uid
-      // );
+      allow read, write: if request.auth != null && (
+        resource == null || resource.data.userId == request.auth.uid
+      );
     }
   }
 }
