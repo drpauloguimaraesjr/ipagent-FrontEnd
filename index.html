@@ -1998,8 +1998,11 @@
         let baseUrl = localStorage.getItem('ipagent-url') || 'https://ipagent.app';
         let bearerToken = localStorage.getItem('ipagent-token') || '';
 
-        // Migrate old trycloudflare URLs to ipagent.app
-        if (baseUrl.includes('trycloudflare.com')) {
+        // Auto-fix bad backend URLs
+        if (baseUrl.includes('trycloudflare.com') ||
+            baseUrl.includes('vercel.app') ||
+            baseUrl.includes('netlify.app') ||
+            baseUrl.includes('github.io')) {
             baseUrl = 'https://ipagent.app';
             localStorage.setItem('ipagent-url', baseUrl);
         }
