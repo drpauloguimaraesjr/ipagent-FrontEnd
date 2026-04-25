@@ -560,6 +560,126 @@
             font-size: 11px;
         }
 
+        .offline-banner-close {
+            background: none;
+            border: none;
+            color: var(--destructive);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            opacity: 0.6;
+            transition: var(--transition);
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        .offline-banner-close:hover { opacity: 1; }
+
+        /* Mode Selector */
+        .mode-selector-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .mode-selector-wrap select {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--fg);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            padding: 5px 10px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            transition: var(--transition);
+            max-width: 200px;
+        }
+        .mode-selector-wrap select:hover {
+            background: var(--glass-bg-hover);
+            border-color: var(--accent);
+        }
+        .mode-selector-wrap select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-light);
+        }
+
+        /* Analyze Button (sidebar cards) */
+        .analyze-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--accent-light);
+            color: var(--accent);
+            border: 1px solid hsl(168 76% 36% / 0.2);
+            border-radius: 6px;
+            padding: 3px 10px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 6px;
+        }
+        .analyze-btn:hover {
+            background: var(--accent);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px hsl(168 76% 36% / 0.25);
+        }
+        .analyze-btn.loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .analyze-btn .spinner-sm {
+            width: 10px;
+            height: 10px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Clinical Opinion Modal */
+        .clinical-opinion-content {
+            padding: 16px;
+            max-height: 60vh;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            color: var(--fg);
+            white-space: pre-wrap;
+        }
+        .clinical-opinion-content::-webkit-scrollbar { width: 4px; }
+        .clinical-opinion-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .clinical-section {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            backdrop-filter: blur(8px);
+        }
+        .clinical-section-title {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        /* Disabled mic */
+        .mic-btn.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
         .header-center {
             display: flex;
             align-items: center;
@@ -1740,6 +1860,11 @@
                     </select>
                     <button class="patient-add-btn" onclick="openPatientModal()" title="Novo paciente">+</button>
                 </div>
+                <div class="mode-selector-wrap" id="mode-selector-wrap">
+                    <select id="mode-select" onchange="onModeSelect()">
+                        <option value="consulta">🩺 Assistente de Consulta</option>
+                    </select>
+                </div>
                 <div class="clock">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
@@ -1798,6 +1923,7 @@
                     <strong>Backend nao esta rodando</strong>
                     <p>Abra o PowerShell no seu PC Windows e digite <code>ipagent</code> para iniciar o servidor.</p>
                 </div>
+                <button class="offline-banner-close" onclick="dismissOfflineBanner()" title="Fechar">&times;</button>
             </div>
         </div>
 
@@ -1845,8 +1971,18 @@
                         <div class="generating-indicator" id="anamnesis-generating">
                             <span class="spinner"></span> Extraindo dados da anamnese...
                         </div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                            <button id="btn-reprocess-anamnesis" onclick="reprocessAnamnesisFromTranscription()" style="background: var(--accent, #2bb78a); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display:inline-flex; align-items:center; gap:6px;" title="Limpa os campos e reprocessa a anamnese a partir da transcrição completa">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+                                Reprocessar Anamnese
+                            </button>
+                            <button id="btn-generate-summary" onclick="generateAnamnesisSummary()" style="background: transparent; color: var(--accent, #2bb78a); border: 1px solid var(--accent, #2bb78a); padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display:inline-flex; align-items:center; gap:6px;" title="Gera o resumo final da IA com base nos campos preenchidos e na transcrição">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+                                Gerar Resumo
+                            </button>
+                        </div>
                         <div class="anamnesis-counter" id="anamnesis-counter">
-                            <span class="count-num" id="anamnesis-filled-count">0</span>/15 campos preenchidos
+                            <span class="count-num" id="anamnesis-filled-count">0</span>/16 campos preenchidos
                         </div>
                         <div id="anamnesis-container" class="anamnesis-form">
                             <div class="anamnesis-field" data-field="nome_paciente">
@@ -1953,6 +2089,13 @@
                                     <span class="anamnesis-field-label">OBSERVACOES FINAIS</span>
                                 </div>
                                 <div class="anamnesis-field-content" id="anamnesis-observacoes">&mdash;</div>
+                            </div>
+                            <div class="anamnesis-field" data-field="resumo_ia" style="border-top: 2px solid var(--accent, #2bb78a); padding-top: 12px; margin-top: 8px;">
+                                <div class="anamnesis-field-header">
+                                    <span class="anamnesis-field-dot"></span>
+                                    <span class="anamnesis-field-label" style="color: var(--accent, #2bb78a);">RESUMO DA IA (REFLEXOES)</span>
+                                </div>
+                                <div class="anamnesis-field-content" id="anamnesis-resumo_ia" style="font-style: italic; line-height: 1.5;">&mdash;</div>
                             </div>
                         </div>
                     </div>
@@ -2128,6 +2271,19 @@
         </div>
     </div>
 
+    <!-- Clinical Opinion Modal -->
+    <div id="clinical-opinion-modal" class="modal-overlay">
+        <div class="modal" style="max-width:620px;">
+            <div class="modal-header">
+                <h3>🔬 Opinião Clínica</h3>
+                <button class="modal-close" onclick="closeClinicalModal()">&#x2715;</button>
+            </div>
+            <div id="clinical-opinion-content" class="clinical-opinion-content">
+                <div class="empty-state">Nenhuma análise disponível.</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
@@ -2246,7 +2402,8 @@
             flexibilidade_alimentar: '',
             exame_fisico: '',
             exames_laboratoriais: '',
-            observacoes: ''
+            observacoes: '',
+            resumo_ia: ''
         };
         let mediaRecorder = null;
         let audioChunks = [];
@@ -3023,6 +3180,115 @@ ${segmentText}
         async function generateAnamnesis() {
             const text = transcriptionContainer.innerText || fullCorrectedText || fullRawText;
             await extractAnamnesisFromSegment(text);
+        }
+
+        async function reprocessAnamnesisFromTranscription() {
+            const text = (transcriptionContainer.innerText || fullCorrectedText || fullRawText || '').trim();
+            if (!text || text.length < 20) {
+                showToast('Sem texto de transcrição para reprocessar', 'error');
+                return;
+            }
+            const btn = document.getElementById('btn-reprocess-anamnesis');
+            const originalHTML = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Reprocessando...'; }
+            try {
+                // Reset all fields except the AI summary (will be regenerated at the end)
+                const preservedSummary = anamnesisFields.resumo_ia;
+                for (const k of Object.keys(anamnesisFields)) anamnesisFields[k] = '';
+                updateAnamnesisUI();
+                // Switch to anamnesis tab so user sees the progress
+                if (typeof switchTab === 'function') switchTab('anamnesis');
+                // Process in chunks if very long (>6000 chars), otherwise single pass
+                const CHUNK_SIZE = 6000;
+                if (text.length <= CHUNK_SIZE) {
+                    await extractAnamnesisFromSegment(text);
+                } else {
+                    const chunks = [];
+                    for (let i = 0; i < text.length; i += CHUNK_SIZE) {
+                        chunks.push(text.slice(i, i + CHUNK_SIZE));
+                    }
+                    showToast(`Processando ${chunks.length} segmentos...`, 'info');
+                    for (let i = 0; i < chunks.length; i++) {
+                        await extractAnamnesisFromSegment(chunks[i]);
+                    }
+                }
+                showToast('Anamnese reprocessada com sucesso!', 'success');
+                // Auto-generate AI summary after reprocessing
+                await generateAnamnesisSummary();
+            } catch (e) {
+                console.error('Reprocess anamnesis error:', e);
+                showToast('Erro ao reprocessar anamnese', 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+            }
+        }
+
+        async function generateAnamnesisSummary() {
+            const transcriptText = (transcriptionContainer.innerText || fullCorrectedText || fullRawText || '').trim();
+            const filledFields = Object.entries(anamnesisFields)
+                .filter(([k, v]) => k !== 'resumo_ia' && v && v.trim())
+                .map(([k, v]) => `[${k}] ${v}`)
+                .join('\n');
+
+            if (!transcriptText && !filledFields) {
+                showToast('Sem dados para gerar resumo', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-generate-summary');
+            const originalHTML = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Gerando...'; }
+
+            const gen = document.getElementById('anamnesis-generating');
+            if (gen) gen.style.display = 'flex';
+
+            try {
+                const prompt = `Você é um médico assistente. Com base na anamnese estruturada abaixo e na transcrição da consulta, gere um RESUMO CLÍNICO REFLEXIVO em português, em formato de parágrafo único (4-8 linhas).
+
+O resumo deve conter:
+1. Síntese do quadro clínico do paciente (queixa principal + HDA condensada).
+2. Fatores de risco e antecedentes relevantes (familiares, patológicos, estilo de vida).
+3. Hipóteses diagnósticas ou linhas de raciocínio clínico (se houver elementos suficientes).
+4. Sugestões de conduta inicial ou exames complementares pertinentes.
+5. Pontos de atenção / alertas (red flags, interações, lacunas na anamnese).
+
+REGRAS:
+- Tom técnico-médico, conciso, sem repetir literalmente o que já está nos campos.
+- Não invente dados; se faltar informação, mencione que precisa ser investigada.
+- NÃO use bullet points nem títulos. Apenas parágrafo corrido.
+- Responda APENAS com o texto do resumo, sem cabeçalhos.
+
+ANAMNESE ESTRUTURADA:
+"""
+${filledFields || '(nenhum campo preenchido ainda)'}
+"""
+
+TRANSCRIÇÃO DA CONSULTA:
+"""
+${transcriptText.slice(0, 8000)}
+"""`;
+
+                const res = await apiFetch('/api/chat/stream', {
+                    method: 'POST',
+                    body: JSON.stringify({ message: prompt, stream: false })
+                });
+                const data = await res.json();
+                const summary = (data.response || data.message || data.content || '').trim();
+
+                if (summary) {
+                    anamnesisFields.resumo_ia = summary;
+                    updateAnamnesisUI();
+                    showToast('Resumo da IA gerado!', 'success');
+                } else {
+                    showToast('Resposta vazia da IA', 'error');
+                }
+            } catch (e) {
+                console.error('Summary generation error:', e);
+                showToast('Erro ao gerar resumo: ' + (e.message || 'desconhecido'), 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+                if (gen) gen.style.display = 'none';
+            }
         }
 
         // ==========================================
