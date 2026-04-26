@@ -3425,8 +3425,10 @@ ${transcriptText.slice(0, 8000)}
                     return;
                 }
 
-                // 4) Match each orphan doc to the closest audio within ±2h
-                const TWO_HOURS = 2 * 60 * 60 * 1000;
+                // 4) Match each orphan doc to the closest audio within +/- 4h
+                // (consultations can last up to 2h; the audio upload happens at the end,
+                //  so the audio timestamp can lag the consultation createdAt by 2h+ easily)
+                const MATCH_WINDOW_MS = 4 * 60 * 60 * 1000;
                 const used = new Set();
                 let linked = 0;
                 let failed = 0;
@@ -3436,7 +3438,7 @@ ${transcriptText.slice(0, 8000)}
                     for (const af of audioFiles) {
                         if (used.has(af.name)) continue;
                         const delta = Math.abs(af.ts - doc_.createdMs);
-                        if (delta < bestDelta && delta <= TWO_HOURS) { best = af; bestDelta = delta; }
+                        if (delta < bestDelta && delta <= MATCH_WINDOW_MS) { best = af; bestDelta = delta; }
                     }
                     if (best) {
                         try {
