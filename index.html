@@ -3735,7 +3735,10 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                 const cleanup = () => { settled = true; a.src = ''; };
                 const finish = (val) => { if (settled) return; cleanup(); resolve(val); };
                 const fail = (err) => { if (settled) return; cleanup(); reject(err); };
-                const timeout = setTimeout(() => fail(new Error('Timeout probing duration')), 60000);
+                // 180s suporta arquivos grandes (~100MB) em rede comum: o probe
+                // força o browser a baixar até o fim do webm pra computar duration
+                // (sem header de Duration). 60s não dava conta de 65MB+.
+                const timeout = setTimeout(() => fail(new Error('Timeout probing duration')), 180000);
                 a.addEventListener('error', () => { clearTimeout(timeout); fail(new Error('Falha ao carregar audio')); });
                 a.addEventListener('loadedmetadata', () => {
                     if (a.duration && a.duration !== Infinity && !isNaN(a.duration)) {
@@ -4079,12 +4082,16 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
 
         async function linkAudioToCurrent(name) {
             if (!currentDocId) { showToast('Sem consulta carregada', 'error'); return; }
-            if (!confirm(`Vincular "${name}" à consulta carregada?\n\nSe já houver áudio vinculado, ele será substituído (o arquivo no Storage não será apagado).`)) return;
+            if (!confirm(`Vincular "${name}" à consulta carregada?\n\nSe já houver áudio vinculado, ele será substituído (o arquivo no Storage não será apagado).\n\nA duração salva também será zerada e re-sondada do novo arquivo.`)) return;
             try {
                 const url = await getDownloadURL(storageRef(storage, 'consultations/' + name));
-                await updateDoc(doc(db, 'consultations', currentDocId), { audioUrl: url });
-                flog(`🔗 Vinculado ${name} → ${currentDocId}`, 'success');
-                showToast('Áudio vinculado!', 'success');
+                // Zera duration: o auto-heal de loadConsultation vai sondar a duração
+                // real do arquivo novo via probeAudioDuration e salvar de volta.
+                // Sem isso, o painel continuaria mostrando a duração antiga (do áudio
+                // anterior) mesmo com o arquivo trocado.
+                await updateDoc(doc(db, 'consultations', currentDocId), { audioUrl: url, duration: 0 });
+                flog(`🔗 Vinculado ${name} → ${currentDocId} (duração será re-sondada)`, 'success');
+                showToast('Áudio vinculado! Sondando duração…', 'success');
                 closeManualLinkAudio();
                 await loadConsultation(currentDocId);
                 loadConsultations();
