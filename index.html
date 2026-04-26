@@ -2284,6 +2284,24 @@
         </div>
     </div>
 
+    <!-- Consultation Logs Modal -->
+    <div id="consultation-logs-modal" class="modal-overlay">
+        <div class="modal" style="max-width:780px;">
+            <div class="modal-header">
+                <h3>📋 Logs da Consulta</h3>
+                <button class="modal-close" onclick="closeConsultationLogs()">&#x2715;</button>
+            </div>
+            <div style="padding: 8px 0 12px; display:flex; gap:8px; flex-wrap:wrap;">
+                <button id="btn-copy-consultation-logs" onclick="copyConsultationLogs()" style="background: var(--accent, #2bb78a); color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">📋 Copiar</button>
+                <button id="btn-export-consultation-logs" onclick="exportConsultationLogs()" style="background: transparent; color: var(--accent, #2bb78a); border:1px solid var(--accent, #2bb78a); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">💾 Exportar .txt</button>
+                <span id="consultation-logs-count" style="margin-left:auto; align-self:center; font-size:12px; color:var(--muted-fg);"></span>
+            </div>
+            <div id="consultation-logs-body" style="background: rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:10px; max-height:60vh; overflow-y:auto; font-family: 'Consolas', 'Monaco', monospace; font-size:11px; line-height:1.5; white-space:pre-wrap; word-break:break-word;">
+                <div class="empty-state">Nenhum log disponível.</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
@@ -2376,6 +2394,8 @@
         let insightsList = [];
         let sessionStartTime = null;
         let sessionTimerInterval = null;
+        let consultationLogStartIdx = 0; // index in logHistory where current consultation started
+        let loadedConsultationLogs = null; // logs from a loaded past consultation (null = use live logs)
         let audioContext = null;
         let analyser = null;
         let mediaStream = null;
@@ -3316,6 +3336,57 @@ ${transcriptText.slice(0, 8000)}
             'Há sinais de alerta (red flags)? Máx 2 frases.'
         ];
 
+        // ==========================================
+        // CONSULTATION LOGS (per-consultation logs in Firebase)
+        // ==========================================
+        function showConsultationLogs() {
+            const logs = loadedConsultationLogs || logHistory.slice(consultationLogStartIdx);
+            const body = document.getElementById('consultation-logs-body');
+            const count = document.getElementById('consultation-logs-count');
+            if (!logs || !logs.length) {
+                body.innerHTML = '<div class="empty-state">Nenhum log salvo nesta consulta.</div>';
+                count.textContent = '';
+            } else {
+                // textContent auto-escapes; CSS white-space:pre-wrap preserves line breaks
+                body.textContent = logs.join('\n');
+                count.textContent = `${logs.length} entradas`;
+            }
+            document.getElementById('consultation-logs-modal').classList.add('active');
+        }
+
+        function closeConsultationLogs() {
+            document.getElementById('consultation-logs-modal').classList.remove('active');
+        }
+
+        async function copyConsultationLogs() {
+            const logs = loadedConsultationLogs || logHistory.slice(consultationLogStartIdx);
+            if (!logs || !logs.length) { showToast('Sem logs para copiar', 'info'); return; }
+            const text = logs.join('\n');
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast(`${logs.length} logs copiados!`, 'success');
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = text; document.body.appendChild(ta);
+                ta.select(); document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('Logs copiados!', 'success');
+            }
+        }
+
+        function exportConsultationLogs() {
+            const logs = loadedConsultationLogs || logHistory.slice(consultationLogStartIdx);
+            if (!logs || !logs.length) { showToast('Sem logs para exportar', 'info'); return; }
+            const text = logs.join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            const stamp = new Date().toISOString().slice(0, 16).replace(':', '-');
+            a.download = `consulta_logs_${stamp}.txt`;
+            a.click();
+            showToast(`Exportados ${logs.length} logs`, 'success');
+        }
+
         function renderInsightsFromList() {
             insightsContainer.innerHTML = '';
             if (!insightsList.length) {
@@ -3487,7 +3558,13 @@ ${transcriptText.slice(0, 8000)}
         // ==========================================
         async function saveConsultation(status = 'recording', audioUrl = null, duration = 0) {
             if (!isFirebaseReady || (!fullRawText.trim() && !currentAnamnesis)) return;
-            const data = { rawTranscript: fullRawText, correctedTranscript: fullCorrectedText, anamnesis: currentAnamnesis, insights: insightsList, status, updatedAt: serverTimestamp() };
+            // Capture logs from this consultation only (between newConsultation/recording start and now).
+            // If we loaded a past consultation, preserve its previously-saved logs by prepending them.
+            // Cap at last 800 entries to stay well under Firestore's 1MB doc limit even on long sessions.
+            const newLogsThisSession = logHistory.slice(consultationLogStartIdx);
+            const previousLogs = Array.isArray(loadedConsultationLogs) ? loadedConsultationLogs : [];
+            const consultationLogs = [...previousLogs, ...newLogsThisSession].slice(-800);
+            const data = { rawTranscript: fullRawText, correctedTranscript: fullCorrectedText, anamnesis: currentAnamnesis, insights: insightsList, logs: consultationLogs, status, updatedAt: serverTimestamp() };
             if (audioUrl) data.audioUrl = audioUrl;
             if (duration) data.duration = duration;
             if (currentUser) data.userId = currentUser.uid;
@@ -3595,10 +3672,15 @@ ${transcriptText.slice(0, 8000)}
                 // Restore AI insights (Fluxo de Consciencia)
                 insightsList = Array.isArray(found.insights) ? found.insights : [];
                 renderInsightsFromList();
+                // Restore consultation logs (saved per-consultation in Firestore)
+                loadedConsultationLogs = Array.isArray(found.logs) ? found.logs : null;
                 // Session info
                 const date = found.createdAt ? found.createdAt.toDate() : new Date();
                 const dur = found.duration ? ` | Duração: ${Math.floor(found.duration / 60)}m${(found.duration % 60).toString().padStart(2, '0')}s` : '';
-                document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}`;
+                const logsBtn = (loadedConsultationLogs && loadedConsultationLogs.length)
+                    ? ` &nbsp;<button onclick="showConsultationLogs()" style="background:transparent; border:1px solid var(--accent, #2bb78a); color: var(--accent, #2bb78a); padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer;" title="Ver logs salvos com esta consulta">📋 Ver Logs (${loadedConsultationLogs.length})</button>`
+                    : '';
+                document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}${logsBtn}`;
                 showToast('Consulta carregada', 'success');
                 loadConsultations();
             } catch (e) { console.error('Load consultation error:', e); showToast('Erro ao carregar', 'error'); }
@@ -3618,6 +3700,9 @@ ${transcriptText.slice(0, 8000)}
             document.getElementById('session-timer').textContent = '00:00';
             liveTranscript.innerHTML = '<span style="color:var(--muted-fg); font-style:italic;">Aguardando fala...</span>';
             insightsContainer.innerHTML = '<div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>';
+            consultationLogStartIdx = logHistory.length;
+            loadedConsultationLogs = null;
+            flog('🆕 Nova consulta iniciada — coleta de logs zerada', 'info');
             showToast('Nova consulta', 'info');
             loadConsultations();
         }
