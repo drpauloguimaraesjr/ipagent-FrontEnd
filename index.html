@@ -3459,6 +3459,69 @@ ${transcriptText.slice(0, 8000)}
             a.addEventListener('seeked', update);
         }
 
+        // Track the currently-mounted Blob URL so we can revoke it when the
+        // user navigates to another consultation (avoids memory leak).
+        let _enhancedAudioBlobUrl = null;
+
+        // The webm files written by MediaRecorder don't carry Duration in the
+        // SegmentInfo header. Without a real Duration the browser's seek bar
+        // can't map currentTime to a position, so the playhead jumps around
+        // randomly. Fix: fetch the file, patch the metadata via
+        // fix-webm-duration, expose the fixed Blob via URL.createObjectURL,
+        // and swap the audio element's src to the patched version.
+        async function enhanceAudioForSeek(audioEl, originalUrl, durationSecs) {
+            if (!audioEl || !originalUrl) return;
+            if (!durationSecs || durationSecs <= 0) return;
+            if (audioEl.dataset.enhanced === 'true') return;
+            audioEl.dataset.enhanced = 'pending';
+
+            // Revoke previous blob (from a previously-loaded consultation)
+            if (_enhancedAudioBlobUrl) {
+                URL.revokeObjectURL(_enhancedAudioBlobUrl);
+                _enhancedAudioBlobUrl = null;
+            }
+
+            // Status indicator inside the player title row
+            const titleSpan = audioEl.closest('div')
+                ?.parentElement
+                ?.querySelector('span[style*="font-weight:500"]');
+            let badge = null;
+            if (titleSpan) {
+                badge = document.createElement('span');
+                badge.style.cssText = 'font-size:10px; color:var(--muted-fg); margin-left:8px; font-weight:normal; display:inline-flex; align-items:center; gap:4px;';
+                badge.innerHTML = '<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#f59e0b;"></span>preparando seek…';
+                titleSpan.appendChild(badge);
+            }
+
+            try {
+                const resp = await fetch(originalUrl);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const blob = await resp.blob();
+                await loadWebmDurationFix();
+                const fixedBlob = await fixWebmDurationAsync(blob, Math.round(durationSecs * 1000));
+                const newUrl = URL.createObjectURL(fixedBlob);
+                _enhancedAudioBlobUrl = newUrl;
+
+                const wasPlaying = !audioEl.paused;
+                const prevTime = audioEl.currentTime || 0;
+                audioEl.src = newUrl;
+                audioEl.addEventListener('loadedmetadata', () => {
+                    try { audioEl.currentTime = prevTime; } catch {}
+                    if (wasPlaying) audioEl.play().catch(() => {});
+                }, { once: true });
+                audioEl.dataset.enhanced = 'true';
+
+                if (badge) badge.innerHTML = '<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent, #2bb78a);"></span>pronto';
+                flog(`🎧 Áudio pronto para seek fluido (${(blob.size / 1024 / 1024).toFixed(1)} MB)`, 'success');
+                // Auto-hide the "pronto" badge after a few seconds
+                if (badge) setTimeout(() => { try { badge.remove(); } catch {} }, 3500);
+            } catch (e) {
+                audioEl.dataset.enhanced = 'failed';
+                if (badge) badge.innerHTML = '<span style="color:#f59e0b;">⚠ falha</span>';
+                flog(`Falha ao preparar áudio para seek: ${e.message}`, 'warn');
+            }
+        }
+
 
         async function copyAudioUrl(url) {
             try {
@@ -4183,6 +4246,13 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                         : '');
                 document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}${logsBtn}${audioPlayer}`;
                 attachLoadedAudioTimeUpdate();
+
+                // If the consultation already has audio + duration, kick off the
+                // background "enhance" so seeking/progress bar work correctly.
+                if (found.audioUrl && found.duration && found.duration > 0) {
+                    const audioEl = document.getElementById('loaded-consultation-audio');
+                    if (audioEl) enhanceAudioForSeek(audioEl, found.audioUrl, found.duration);
+                }
 
                 // Heal missing duration: when a consultation has audio but no
                 // duration was saved (e.g. it was paused before being properly
