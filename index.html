@@ -3316,6 +3316,27 @@ ${transcriptText.slice(0, 8000)}
             'Há sinais de alerta (red flags)? Máx 2 frases.'
         ];
 
+        function renderInsightsFromList() {
+            insightsContainer.innerHTML = '';
+            if (!insightsList.length) {
+                insightsContainer.innerHTML = '<div class="empty-state">Ideias e conclusões da IA aparecerão aqui.</div>';
+                return;
+            }
+            // Render in reverse chronological order (newest first), matching live behavior
+            for (let i = insightsList.length - 1; i >= 0; i--) {
+                const item = insightsList[i];
+                // Backward compat: old saved data was an array of strings
+                const label = (item && typeof item === 'object' && item.label) ? item.label : '💡 Insight';
+                const text = (item && typeof item === 'object') ? (item.text || '') : String(item || '');
+                const ts = (item && typeof item === 'object' && item.ts) ? new Date(item.ts) : null;
+                const card = document.createElement('div');
+                card.className = 'insight-item';
+                const tsHTML = ts ? `<span style="color:var(--muted-fg); font-size:10px; margin-left:6px;">${ts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>` : '';
+                card.innerHTML = `<div class="insight-label">${label}${tsHTML}</div><span class="insight-text">${text.replace(/</g, '&lt;')}</span>`;
+                insightsContainer.appendChild(card);
+            }
+        }
+
         function startInsightsTimer() {
             insightsTimerRef = setInterval(() => {
                 if (lastConnectionState !== 'online') return; // skip if backend offline
@@ -3360,8 +3381,10 @@ ${transcriptText.slice(0, 8000)}
                     }
                 }
                 const sp = card.querySelector('.spinner'); if (sp) sp.remove();
-                insightsList.push(full);
+                insightsList.push({ label, text: full, ts: Date.now() });
                 addRatingBar(card);
+                // Persist immediately so insights survive reload / browser close
+                if (currentDocId || fullRawText.trim()) scheduleAutoSave();
             } catch (e) {
                 console.warn('Insight error:', e);
                 // Remove spinner and show error state on failure
@@ -3464,7 +3487,7 @@ ${transcriptText.slice(0, 8000)}
         // ==========================================
         async function saveConsultation(status = 'recording', audioUrl = null, duration = 0) {
             if (!isFirebaseReady || (!fullRawText.trim() && !currentAnamnesis)) return;
-            const data = { rawTranscript: fullRawText, correctedTranscript: fullCorrectedText, anamnesis: currentAnamnesis, status, updatedAt: serverTimestamp() };
+            const data = { rawTranscript: fullRawText, correctedTranscript: fullCorrectedText, anamnesis: currentAnamnesis, insights: insightsList, status, updatedAt: serverTimestamp() };
             if (audioUrl) data.audioUrl = audioUrl;
             if (duration) data.duration = duration;
             if (currentUser) data.userId = currentUser.uid;
@@ -3569,6 +3592,9 @@ ${transcriptText.slice(0, 8000)}
                 transcriptionEmpty.style.display = fullRawText ? 'none' : 'block';
                 transcriptionContainer.style.display = fullRawText ? 'block' : 'none';
                 transcriptionContainer.innerHTML = fullRawText ? `<span class="transcript-segment">${fullRawText}</span>` : '';
+                // Restore AI insights (Fluxo de Consciencia)
+                insightsList = Array.isArray(found.insights) ? found.insights : [];
+                renderInsightsFromList();
                 // Session info
                 const date = found.createdAt ? found.createdAt.toDate() : new Date();
                 const dur = found.duration ? ` | Duração: ${Math.floor(found.duration / 60)}m${(found.duration % 60).toString().padStart(2, '0')}s` : '';
@@ -3832,7 +3858,8 @@ ${transcriptText.slice(0, 8000)}
             if (insightsList.length > 0) {
                 addText('INSIGHTS DA IA', 14, [13, 148, 136], true);
                 insightsList.forEach((insight, i) => {
-                    addText(`${i+1}. ${insight}`, 10, [80,80,80]);
+                    const text = (insight && typeof insight === 'object') ? (insight.label ? `${insight.label} — ${insight.text || ''}` : (insight.text || '')) : String(insight || '');
+                    addText(`${i+1}. ${text}`, 10, [80,80,80]);
                 });
             }
 
