@@ -4183,6 +4183,29 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                         : '');
                 document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}${logsBtn}${audioPlayer}`;
                 attachLoadedAudioTimeUpdate();
+
+                // Heal missing duration: when a consultation has audio but no
+                // duration was saved (e.g. it was paused before being properly
+                // stopped, then later marked completed via Encerrar), probe the
+                // actual length from the audio file and persist it back to
+                // Firestore. Then re-render so the player shows correct totals.
+                if (found.audioUrl && (!found.duration || found.duration <= 0)) {
+                    flog('🔍 Sondando duração real do áudio (não estava salva)…', 'info');
+                    probeAudioDuration(found.audioUrl).then(async (durationSecs) => {
+                        if (!durationSecs || durationSecs === Infinity || isNaN(durationSecs)) {
+                            flog('Probe retornou duração inválida — pulando salvamento', 'warn');
+                            return;
+                        }
+                        try {
+                            await updateDoc(doc(db, 'consultations', docId), { duration: Math.round(durationSecs) });
+                            flog(`🔍 Duração detectada e salva: ${formatHMS(durationSecs)}`, 'success');
+                            // Re-render only if the user is still viewing this same consultation
+                            if (currentDocId === docId) loadConsultation(docId);
+                        } catch (e) {
+                            flog(`Falha ao salvar duração: ${e.message}`, 'warn');
+                        }
+                    }).catch(e => flog(`Probe de duração falhou: ${e.message}`, 'warn'));
+                }
                 showToast('Consulta carregada', 'success');
                 loadConsultations();
             } catch (e) { console.error('Load consultation error:', e); showToast('Erro ao carregar', 'error'); }
