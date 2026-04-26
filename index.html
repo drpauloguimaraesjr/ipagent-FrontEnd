@@ -2215,7 +2215,17 @@
                     🔗 Sincronizar Áudios Órfãos
                 </button>
                 <div style="font-size:10px; color:var(--muted-fg); margin-top:6px; line-height:1.5;">
-                    Procura áudios no Firebase Storage e tenta vincular automaticamente a consultas antigas sem áudio (match por proximidade de timestamp ±2h).
+                    Procura áudios no Firebase Storage e tenta vincular automaticamente a consultas antigas sem áudio (match por proximidade de timestamp ±4h).
+                </div>
+
+                <div style="margin-top:14px; padding:10px; background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.2); border-radius:6px;">
+                    <div style="font-size:11px; color:#f59e0b; font-weight:500; margin-bottom:4px;">⚠ CORS no Firebase Storage (necessário para conversão MP3)</div>
+                    <div style="font-size:10px; color:var(--muted-fg); line-height:1.6;">
+                        Se o botão <strong>🎵 MP3</strong> der "Failed to fetch", o bucket do Storage precisa permitir CORS para fetch. Rode no terminal (precisa do Google Cloud SDK / gsutil):
+                    </div>
+                    <pre style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:4px; padding:8px; margin:6px 0 4px; font-size:10px; line-height:1.5; white-space:pre-wrap; word-break:break-word; font-family:'Consolas','Monaco',monospace; color:#e4e4e7;">echo '[{"origin":["*"],"method":["GET"],"maxAgeSeconds":3600,"responseHeader":["Content-Type"]}]' &gt; cors.json
+gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
+                    <button onclick="copyCorsCmd()" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted-fg); padding:3px 9px; border-radius:4px; font-size:10px; cursor:pointer;">📋 Copiar comando</button>
                 </div>
             </div>
             <button class="modal-save-btn" onclick="saveSettings()" style="margin-top: 16px;">Salvar e Conectar</button>
@@ -3373,12 +3383,43 @@ ${transcriptText.slice(0, 8000)}
         // ==========================================
         // AUDIO HELPERS (download / copy URL / re-link orphans)
         // ==========================================
+        function formatHMS(totalSecs) {
+            totalSecs = Math.max(0, Math.floor(totalSecs || 0));
+            const h = Math.floor(totalSecs / 3600);
+            const m = Math.floor((totalSecs % 3600) / 60);
+            const s = totalSecs % 60;
+            const pad = (n) => n.toString().padStart(2, '0');
+            return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+        }
+
+        function attachLoadedAudioTimeUpdate() {
+            const a = document.getElementById('loaded-consultation-audio');
+            const out = document.getElementById('loaded-audio-current');
+            if (!a || !out) return;
+            const update = () => { out.textContent = formatHMS(a.currentTime); };
+            a.addEventListener('timeupdate', update);
+            a.addEventListener('seeking', update);
+            a.addEventListener('seeked', update);
+        }
+
+
         async function copyAudioUrl(url) {
             try {
                 await navigator.clipboard.writeText(url);
                 showToast('URL do áudio copiada', 'success');
             } catch {
                 showToast('Não foi possível copiar', 'error');
+            }
+        }
+
+        async function copyCorsCmd() {
+            const cmd = `echo '[{"origin":["*"],"method":["GET"],"maxAgeSeconds":3600,"responseHeader":["Content-Type"]}]' > cors.json
+gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
+            try {
+                await navigator.clipboard.writeText(cmd);
+                showToast('Comando copiado!', 'success');
+            } catch {
+                showToast('Erro ao copiar', 'error');
             }
         }
 
@@ -3410,10 +3451,25 @@ ${transcriptText.slice(0, 8000)}
                 setBtn('⏳ Baixando…');
                 flog('🎵 Iniciando conversão para MP3', 'info');
 
-                // 1) Fetch the webm blob
-                const resp = await fetch(audioUrl);
-                if (!resp.ok) throw new Error(`HTTP ${resp.status} ao baixar áudio`);
-                const arrBuf = await resp.arrayBuffer();
+                // 1) Fetch the webm blob — try direct fetch first, fall back to no-cors via <audio>
+                let arrBuf;
+                try {
+                    const resp = await fetch(audioUrl, { mode: 'cors' });
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status} ao baixar áudio`);
+                    arrBuf = await resp.arrayBuffer();
+                } catch (fetchErr) {
+                    // CORS or network — surface a clear message with fix instructions
+                    flog('⚠️ Fetch direto falhou (provavelmente CORS). Configure o bucket conforme instruções no painel.', 'warn');
+                    const isCors = (fetchErr.message === 'Failed to fetch') || (fetchErr.name === 'TypeError');
+                    if (isCors) {
+                        const msg = 'Erro CORS no Firebase Storage. Veja Configurações → MANUTENÇÃO para o comando de fix.';
+                        showToast(msg, 'error');
+                        // Mark a flag so the settings panel shows a CORS warning
+                        window._audioCorsBlocked = true;
+                        throw new Error('CORS_BLOCKED');
+                    }
+                    throw fetchErr;
+                }
                 flog(`Áudio baixado: ${(arrBuf.byteLength / 1024 / 1024).toFixed(2)} MB`, 'info');
 
                 // 2) Decode via Web Audio API (handles webm/opus natively)
@@ -3928,9 +3984,11 @@ ${transcriptText.slice(0, 8000)}
                     const pat = (found.patientName || 'consulta').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
                     return `${stamp}_${pat}.webm`;
                 })();
+                const totalDurSecs = found.duration || 0;
+                const totalDurFmt = formatHMS(totalDurSecs);
                 const audioPlayer = found.audioUrl
                     ? `<div style="margin-top:10px; padding:10px; background:rgba(43,183,138,0.08); border:1px solid rgba(43,183,138,0.25); border-radius:6px;">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
                             <span style="font-size:12px; color:var(--accent, #2bb78a); font-weight:500;">🎧 Áudio da consulta</span>
                             <span style="flex:1;"></span>
                             <a href="${found.audioUrl}" download="${audioFileName}" target="_blank" rel="noopener" style="background:transparent; border:1px solid var(--accent, #2bb78a); color:var(--accent, #2bb78a); padding:3px 9px; border-radius:4px; font-size:11px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="Baixar áudio original (.webm)">
@@ -3940,12 +3998,17 @@ ${transcriptText.slice(0, 8000)}
                             <button onclick="downloadAsMp3('${found.audioUrl}', '${audioFileName.replace('.webm', '')}')" style="background:transparent; border:1px solid #f59e0b; color:#f59e0b; padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="Converte e baixa como MP3 (compatível com qualquer player)">🎵 MP3</button>
                             <button onclick="copyAudioUrl('${found.audioUrl}')" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted-fg); padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer;" title="Copiar URL do áudio">🔗 URL</button>
                         </div>
-                        <audio controls preload="metadata" src="${found.audioUrl}" style="width:100%; height:36px;"></audio>
+                        <audio id="loaded-consultation-audio" controls preload="metadata" src="${found.audioUrl}" style="width:100%; height:36px;"></audio>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--muted-fg); margin-top:6px; font-family:'Consolas','Monaco',monospace;">
+                            <span>⏱️ <span id="loaded-audio-current" style="color:var(--accent, #2bb78a); font-weight:500;">0:00</span> / <span style="color:var(--accent, #2bb78a); font-weight:500;">${totalDurFmt}</span></span>
+                            <span>Duração total: ${Math.floor(totalDurSecs/60)}min ${totalDurSecs%60}s</span>
+                        </div>
                     </div>`
                     : (found.status === 'completed'
                         ? `<div style="margin-top:8px; padding:8px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:6px; font-size:11px; color:var(--muted-fg);">⚠️ Esta consulta não tem áudio vinculado. Use <strong>🔗 Sincronizar Áudios</strong> nas configurações para tentar re-associar.</div>`
                         : '');
                 document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}${logsBtn}${audioPlayer}`;
+                attachLoadedAudioTimeUpdate();
                 showToast('Consulta carregada', 'success');
                 loadConsultations();
             } catch (e) { console.error('Load consultation error:', e); showToast('Erro ao carregar', 'error'); }
@@ -4274,6 +4337,7 @@ ${transcriptText.slice(0, 8000)}
         window.skipAuth = skipAuth;
         window.signInWithGoogle = signInWithGoogle;
         window.copyAudioUrl = copyAudioUrl;
+        window.copyCorsCmd = copyCorsCmd;
         window.relinkOrphanAudios = relinkOrphanAudios;
         window.downloadAsMp3 = downloadAsMp3;
         window.openPatientModal = openPatientModal;
