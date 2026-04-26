@@ -2343,7 +2343,12 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                 <button class="modal-close" onclick="closeManualLinkAudio()">&#x2715;</button>
             </div>
             <div style="font-size:11px; color:var(--muted-fg); margin-bottom:10px; line-height:1.5;">
-                Escolha um arquivo de áudio do Storage para vincular à <strong>consulta atualmente carregada</strong>. Use <em>▶ Ouvir</em> para conferir antes de vincular.
+                Escolha um arquivo de áudio do Storage para vincular à <strong>consulta atualmente carregada</strong>. Use <em>▶ Ouvir</em> para conferir antes de vincular. Se o áudio sumiu do Storage e você ainda tem o <code>.webm</code> no disco, use <strong>📤 Subir do disco</strong> pra restaurar.
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">
+                <input type="file" id="manual-link-file-input" accept="audio/webm,.webm" style="display:none;">
+                <button onclick="document.getElementById('manual-link-file-input').click()" style="background:transparent; border:1px solid var(--accent, #2bb78a); color:var(--accent, #2bb78a); padding:6px 12px; border-radius:6px; font-size:11px; cursor:pointer;">📤 Subir áudio do disco</button>
+                <span id="manual-link-upload-status" style="font-size:11px; color:var(--muted-fg);"></span>
             </div>
             <div id="manual-link-body" style="background: rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:6px; max-height:55vh; overflow-y:auto;">
                 <div style="padding:20px; text-align:center; color:var(--muted-fg);">Carregando…</div>
@@ -4089,6 +4094,35 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
             }
         }
 
+        async function uploadAudioFromDisk(file) {
+            if (!isFirebaseReady) { showToast('Firebase não está pronto', 'error'); return; }
+            if (!file) return;
+            const status = document.getElementById('manual-link-upload-status');
+            // Preserva o timestamp original quando o filename já está no formato {ts}_audio.webm.
+            // Caso contrário gera um novo nome com Date.now() pra entrar no schema do listing.
+            let targetName;
+            const m = (file.name || '').match(/^(\d{13})_audio\.webm$/);
+            if (m) targetName = file.name;
+            else targetName = `${Date.now()}_audio.webm`;
+            try {
+                if (status) status.textContent = `Subindo ${targetName} (${(file.size / 1024 / 1024).toFixed(1)} MB)…`;
+                flog(`📤 Subindo ${targetName} (${file.size} bytes)`, 'info');
+                const fileRef = storageRef(storage, 'consultations/' + targetName);
+                await uploadBytes(fileRef, file, { contentType: 'audio/webm' });
+                flog(`✅ Upload OK: consultations/${targetName}`, 'success');
+                if (status) status.innerHTML = `<span style="color:var(--accent, #2bb78a);">✓ ${targetName} subido. Use Vincular abaixo.</span>`;
+                showToast('Áudio enviado ao Storage', 'success');
+                // Re-renderiza a lista do modal pra mostrar o novo arquivo
+                await openManualLinkAudio();
+                // Volta a status (openManualLinkAudio limpa o body mas a status fica fora)
+                if (status) status.innerHTML = `<span style="color:var(--accent, #2bb78a);">✓ ${targetName} subido. Use Vincular abaixo.</span>`;
+            } catch (e) {
+                flog('✗ Erro upload: ' + e.message, 'error');
+                if (status) status.innerHTML = `<span style="color:var(--destructive);">Erro: ${e.message}</span>`;
+                showToast('Erro: ' + e.message, 'error');
+            }
+        }
+
         function closeManualLinkAudio() {
             const m = document.getElementById('manual-link-modal');
             if (m) m.classList.remove('active');
@@ -4912,7 +4946,17 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
         window.closeManualLinkAudio = closeManualLinkAudio;
         window.previewAudioFile = previewAudioFile;
         window.linkAudioToCurrent = linkAudioToCurrent;
+        window.uploadAudioFromDisk = uploadAudioFromDisk;
         window.deleteConsultation = deleteConsultation;
+        // Wire the file input to uploadAudioFromDisk on first load
+        document.addEventListener('DOMContentLoaded', () => {
+            const inp = document.getElementById('manual-link-file-input');
+            if (inp) inp.addEventListener('change', (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (f) uploadAudioFromDisk(f);
+                e.target.value = ''; // permite re-selecionar mesmo arquivo
+            });
+        });
         window.downloadAsMp3 = downloadAsMp3;
         window.toggleTheme = toggleTheme;
         window.dismissOfflineBanner = function () {
