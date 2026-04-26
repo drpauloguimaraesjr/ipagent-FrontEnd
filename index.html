@@ -2335,6 +2335,26 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
         </div>
     </div>
 
+    <!-- Manual Audio Link Modal -->
+    <div id="manual-link-modal" class="modal-overlay">
+        <div class="modal" style="max-width:720px;">
+            <div class="modal-header">
+                <h3>🔗 Vincular Áudio Manualmente</h3>
+                <button class="modal-close" onclick="closeManualLinkAudio()">&#x2715;</button>
+            </div>
+            <div style="font-size:11px; color:var(--muted-fg); margin-bottom:10px; line-height:1.5;">
+                Escolha um arquivo de áudio do Storage para vincular à <strong>consulta atualmente carregada</strong>. Use <em>▶ Ouvir</em> para conferir antes de vincular.
+            </div>
+            <div id="manual-link-body" style="background: rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:6px; max-height:55vh; overflow-y:auto;">
+                <div style="padding:20px; text-align:center; color:var(--muted-fg);">Carregando…</div>
+            </div>
+            <div id="manual-link-preview" style="margin-top:10px; display:none;">
+                <div style="font-size:11px; color:var(--muted-fg); margin-bottom:4px;">Preview: <span id="manual-link-preview-name"></span></div>
+                <audio id="manual-link-audio-el" controls style="width:100%; height:36px;"></audio>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
@@ -2360,8 +2380,8 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
     <!-- ===== FIREBASE + APP LOGIC ===== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, listAll, getMetadata } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, listAll, getMetadata, deleteObject } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut as firebaseSignOut, updateProfile, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -3872,6 +3892,163 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
         }
 
         // ==========================================
+        // MANUAL AUDIO LINK (pick a Storage file and bind to current consultation)
+        // ==========================================
+        async function openManualLinkAudio() {
+            if (!isFirebaseReady) { showToast('Firebase não está pronto', 'error'); return; }
+            if (!currentDocId) { showToast('Carregue uma consulta primeiro', 'info'); return; }
+            const modal = document.getElementById('manual-link-modal');
+            const body = document.getElementById('manual-link-body');
+            const previewWrap = document.getElementById('manual-link-preview');
+            previewWrap.style.display = 'none';
+            body.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted-fg);">Carregando arquivos…</div>';
+            modal.classList.add('active');
+            try {
+                const listing = await listAll(storageRef(storage, 'consultations'));
+                const audioFiles = [];
+                for (const item of listing.items) {
+                    const m = item.name.match(/^(\d{13})_audio\.webm$/);
+                    if (m) audioFiles.push({ ts: parseInt(m[1], 10), name: item.name });
+                }
+                audioFiles.sort((a, b) => b.ts - a.ts);
+
+                const snap = await getDocs(query(collection(db, 'consultations')));
+                const tsToDoc = new Map();
+                let currentData = null;
+                snap.forEach(d => {
+                    if (d.id === currentDocId) currentData = d.data();
+                    const data = d.data();
+                    if (data.audioUrl) {
+                        const m = data.audioUrl.match(/(\d{13})_audio\.webm/);
+                        if (m) tsToDoc.set(parseInt(m[1], 10), { id: d.id, data });
+                    }
+                });
+                const currentTs = currentData && currentData.audioUrl
+                    ? parseInt((currentData.audioUrl.match(/(\d{13})_audio\.webm/) || [])[1] || '0', 10)
+                    : 0;
+                const currentDocCreatedMs = currentData && currentData.createdAt
+                    ? currentData.createdAt.toDate().getTime() : 0;
+
+                if (!audioFiles.length) {
+                    body.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted-fg);">Nenhum arquivo de áudio encontrado no Storage.</div>';
+                    return;
+                }
+
+                body.innerHTML = audioFiles.map(af => {
+                    const date = new Date(af.ts);
+                    const dateStr = date.toLocaleString('pt-BR');
+                    const linked = tsToDoc.get(af.ts);
+                    const isCurrent = af.ts === currentTs;
+                    let badge = '';
+                    if (isCurrent) badge = '<span style="background:rgba(43,183,138,0.15); color:var(--accent, #2bb78a); padding:2px 6px; border-radius:3px; font-size:10px;">✓ vinculado a esta consulta</span>';
+                    else if (linked) badge = `<span style="background:rgba(245,158,11,0.12); color:#f59e0b; padding:2px 6px; border-radius:3px; font-size:10px;" title="Doc ${linked.id}">⚠ usado por outra consulta</span>`;
+                    else badge = '<span style="background:rgba(255,255,255,0.06); color:var(--muted-fg); padding:2px 6px; border-radius:3px; font-size:10px;">órfão</span>';
+                    let proximity = '';
+                    if (currentDocCreatedMs) {
+                        const deltaMin = Math.round((af.ts - currentDocCreatedMs) / 60000);
+                        const sign = deltaMin >= 0 ? '+' : '';
+                        proximity = `<span style="font-size:10px; color:var(--muted-fg); margin-left:6px;">Δ consulta: ${sign}${deltaMin}min</span>`;
+                    }
+                    return `
+                    <div style="display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid rgba(255,255,255,0.06); ${isCurrent ? 'background:rgba(43,183,138,0.04);' : ''}">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-size:12px; color:var(--fg); font-family:'DM Mono',monospace;">${dateStr}${proximity}</div>
+                            <div style="font-size:10px; color:var(--muted-fg); margin-top:3px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                <span style="font-family:'DM Mono',monospace;">${af.name}</span>
+                                ${badge}
+                            </div>
+                        </div>
+                        <button onclick="previewAudioFile('${af.name}')" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted-fg); padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;" title="Tocar para conferir">▶ Ouvir</button>
+                        ${isCurrent
+                            ? '<button disabled style="background:transparent; border:1px solid var(--accent, #2bb78a); color:var(--accent, #2bb78a); padding:4px 10px; border-radius:4px; font-size:11px; opacity:0.6; cursor:default;">vinculado</button>'
+                            : `<button onclick="linkAudioToCurrent('${af.name}')" style="background:var(--accent, #2bb78a); border:none; color:#fff; padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer;">Vincular</button>`}
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = `<div style="padding:20px; color:var(--destructive);">Erro: ${e.message}</div>`;
+                flog('✗ Erro listando áudios: ' + e.message, 'error');
+            }
+        }
+
+        async function previewAudioFile(name) {
+            try {
+                const url = await getDownloadURL(storageRef(storage, 'consultations/' + name));
+                const wrap = document.getElementById('manual-link-preview');
+                const el = document.getElementById('manual-link-audio-el');
+                document.getElementById('manual-link-preview-name').textContent = name;
+                el.src = url;
+                wrap.style.display = 'block';
+                el.play().catch(() => {});
+            } catch (e) {
+                showToast('Falha ao carregar áudio: ' + e.message, 'error');
+            }
+        }
+
+        async function linkAudioToCurrent(name) {
+            if (!currentDocId) { showToast('Sem consulta carregada', 'error'); return; }
+            if (!confirm(`Vincular "${name}" à consulta carregada?\n\nSe já houver áudio vinculado, ele será substituído (o arquivo no Storage não será apagado).`)) return;
+            try {
+                const url = await getDownloadURL(storageRef(storage, 'consultations/' + name));
+                await updateDoc(doc(db, 'consultations', currentDocId), { audioUrl: url });
+                flog(`🔗 Vinculado ${name} → ${currentDocId}`, 'success');
+                showToast('Áudio vinculado!', 'success');
+                closeManualLinkAudio();
+                await loadConsultation(currentDocId);
+                loadConsultations();
+            } catch (e) {
+                flog('✗ Erro vincular: ' + e.message, 'error');
+                showToast('Erro: ' + e.message, 'error');
+            }
+        }
+
+        function closeManualLinkAudio() {
+            const m = document.getElementById('manual-link-modal');
+            if (m) m.classList.remove('active');
+            const el = document.getElementById('manual-link-audio-el');
+            if (el) { try { el.pause(); el.src = ''; } catch {} }
+            const wrap = document.getElementById('manual-link-preview');
+            if (wrap) wrap.style.display = 'none';
+        }
+
+        // ==========================================
+        // DELETE CONSULTATION (doc + storage audio if any)
+        // ==========================================
+        async function deleteConsultation(docId) {
+            if (!isFirebaseReady) { showToast('Firebase não está pronto', 'error'); return; }
+            if (isRecording && docId === currentDocId) {
+                showToast('Pare a gravação antes de apagar', 'info'); return;
+            }
+            if (!confirm('Apagar esta consulta?\n\nO documento + áudio no Storage serão removidos. Esta ação não pode ser desfeita.')) return;
+            try {
+                const snap = await getDocs(query(collection(db, 'consultations')));
+                let data = null;
+                snap.forEach(d => { if (d.id === docId) data = d.data(); });
+                if (data && data.audioUrl) {
+                    const m = data.audioUrl.match(/(\d{13}_audio\.webm)/);
+                    if (m) {
+                        try {
+                            await deleteObject(storageRef(storage, 'consultations/' + m[1]));
+                            flog(`🗑 Áudio ${m[1]} apagado do Storage`, 'info');
+                        } catch (e) {
+                            flog('⚠ Falha apagando áudio (segue apagando doc): ' + e.message, 'warn');
+                        }
+                    }
+                }
+                await deleteDoc(doc(db, 'consultations', docId));
+                flog(`🗑 Consulta ${docId} apagada`, 'success');
+                showToast('Consulta apagada', 'success');
+                if (currentDocId === docId) {
+                    currentDocId = null;
+                    if (typeof newConsultation === 'function') newConsultation();
+                }
+                loadConsultations();
+            } catch (e) {
+                flog('✗ Erro apagar consulta: ' + e.message, 'error');
+                showToast('Erro: ' + e.message, 'error');
+            }
+        }
+
+        // ==========================================
         // CONSULTATION LOGS (per-consultation logs in Firebase)
         // ==========================================
         function showConsultationLogs() {
@@ -4167,7 +4344,10 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                     card.innerHTML = `
                         <div class="hc-date">
                             <span>${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                            <span class="hc-status ${st}">${st}${dur ? ' · ' + dur : ''}</span>
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <span class="hc-status ${st}">${st}${dur ? ' · ' + dur : ''}</span>
+                                <button class="hc-delete" onclick="event.stopPropagation(); deleteConsultation('${id}')" title="Excluir consulta" style="background:transparent; border:none; color:var(--muted-fg); cursor:pointer; padding:2px 4px; border-radius:3px; font-size:13px; opacity:0.45; line-height:1;" onmouseover="this.style.opacity=1; this.style.color='#ef4444'" onmouseout="this.style.opacity=0.45; this.style.color='var(--muted-fg)'">🗑</button>
+                            </span>
                         </div>
                         ${patName ? '<div style="font-size:0.8rem;color:var(--accent);margin-bottom:3px;">👤 ' + patName + '</div>' : ''}
                         <div class="hc-preview">${preview}${(d.rawTranscript || '').length > 80 ? '...' : ''}</div>
@@ -4234,6 +4414,7 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                             </a>
                             <button onclick="downloadAsMp3('${found.audioUrl}', '${audioFileName.replace('.webm', '')}', ${totalDurSecs})" style="background:transparent; border:1px solid #f59e0b; color:#f59e0b; padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="Converte e baixa como MP3 (compatível com qualquer player)">🎵 MP3</button>
                             <button onclick="copyAudioUrl('${found.audioUrl}')" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted-fg); padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer;" title="Copiar URL do áudio">🔗 URL</button>
+                            <button onclick="openManualLinkAudio()" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted-fg); padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer;" title="Trocar manualmente o áudio vinculado">🔁 Trocar</button>
                         </div>
                         <audio id="loaded-consultation-audio" controls preload="metadata" src="${found.audioUrl}" style="width:100%; height:36px;"></audio>
                         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--muted-fg); margin-top:6px; font-family:'Consolas','Monaco',monospace;">
@@ -4242,7 +4423,7 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                         </div>
                     </div>`
                     : (found.status === 'completed'
-                        ? `<div style="margin-top:8px; padding:8px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:6px; font-size:11px; color:var(--muted-fg);">⚠️ Esta consulta não tem áudio vinculado. Use <strong>🔗 Sincronizar Áudios</strong> nas configurações para tentar re-associar.</div>`
+                        ? `<div style="margin-top:8px; padding:8px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:6px; font-size:11px; color:var(--muted-fg);">⚠️ Esta consulta não tem áudio vinculado. <button onclick="openManualLinkAudio()" style="background:var(--accent, #2bb78a); border:none; color:#fff; padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer; margin-left:6px;">🔗 Vincular manualmente</button> ou use <strong>🔗 Sincronizar Áudios</strong> nas configurações.</div>`
                         : '');
                 document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}${logsBtn}${audioPlayer}`;
                 attachLoadedAudioTimeUpdate();
@@ -4606,6 +4787,11 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
         window.copyAudioUrl = copyAudioUrl;
         window.copyCorsCmd = copyCorsCmd;
         window.relinkOrphanAudios = relinkOrphanAudios;
+        window.openManualLinkAudio = openManualLinkAudio;
+        window.closeManualLinkAudio = closeManualLinkAudio;
+        window.previewAudioFile = previewAudioFile;
+        window.linkAudioToCurrent = linkAudioToCurrent;
+        window.deleteConsultation = deleteConsultation;
         window.downloadAsMp3 = downloadAsMp3;
         window.toggleTheme = toggleTheme;
         window.dismissOfflineBanner = function () {
