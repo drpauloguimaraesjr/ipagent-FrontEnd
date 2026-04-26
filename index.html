@@ -2208,6 +2208,16 @@
                     </div>
                 </div>
             </div>
+            <div class="modal-section">
+                <div class="modal-section-title">MANUTENÇÃO</div>
+                <button id="btn-relink-audios" onclick="relinkOrphanAudios()" style="width:100%; padding:8px 12px; background:transparent; color:var(--accent, #2bb78a); border:1px solid var(--accent, #2bb78a); border-radius:6px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;" title="Procura áudios no Storage e tenta vincular a consultas que não têm áudio">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    🔗 Sincronizar Áudios Órfãos
+                </button>
+                <div style="font-size:10px; color:var(--muted-fg); margin-top:6px; line-height:1.5;">
+                    Procura áudios no Firebase Storage e tenta vincular automaticamente a consultas antigas sem áudio (match por proximidade de timestamp ±2h).
+                </div>
+            </div>
             <button class="modal-save-btn" onclick="saveSettings()" style="margin-top: 16px;">Salvar e Conectar</button>
         </div>
     </div>
@@ -2337,7 +2347,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, listAll, getMetadata } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut as firebaseSignOut, updateProfile, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -3361,6 +3371,101 @@ ${transcriptText.slice(0, 8000)}
         ];
 
         // ==========================================
+        // AUDIO HELPERS (download / copy URL / re-link orphans)
+        // ==========================================
+        async function copyAudioUrl(url) {
+            try {
+                await navigator.clipboard.writeText(url);
+                showToast('URL do áudio copiada', 'success');
+            } catch {
+                showToast('Não foi possível copiar', 'error');
+            }
+        }
+
+        // Scan Firebase Storage for "consultations/{ts}_audio.webm" files and try to
+        // associate each one with a consultation doc that doesn't have audioUrl yet.
+        // Match strategy: find the doc whose createdAt is within ±2h of the audio
+        // upload timestamp, preferring the closest in time.
+        async function relinkOrphanAudios() {
+            if (!isFirebaseReady) { showToast('Firebase não está pronto', 'error'); return; }
+            const btn = document.getElementById('btn-relink-audios');
+            const original = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Sincronizando...'; }
+            try {
+                flog('🔗 Iniciando sincronização de áudios órfãos', 'info');
+                // 1) List all audio files under consultations/
+                const listRef = storageRef(storage, 'consultations');
+                const listing = await listAll(listRef);
+                flog(`Encontrados ${listing.items.length} arquivos de áudio no Storage`, 'info');
+
+                // 2) Build {ts -> {name, ref}} map from filenames "{timestamp}_audio.webm"
+                const audioFiles = [];
+                for (const item of listing.items) {
+                    const m = item.name.match(/^(\d{13})_audio\.webm$/);
+                    if (m) audioFiles.push({ ts: parseInt(m[1], 10), name: item.name, ref: item });
+                }
+                if (!audioFiles.length) {
+                    showToast('Nenhum áudio encontrado no Storage', 'info');
+                    return;
+                }
+
+                // 3) Load all consultations and find the ones without audioUrl
+                const snap = await getDocs(query(collection(db, 'consultations')));
+                const orphanDocs = [];
+                snap.forEach(d => {
+                    const data = d.data();
+                    if (!data.audioUrl && data.createdAt) {
+                        orphanDocs.push({ id: d.id, createdMs: data.createdAt.toDate().getTime(), data });
+                    }
+                });
+                flog(`${orphanDocs.length} consultas sem áudio vinculado`, 'info');
+
+                if (!orphanDocs.length) {
+                    showToast(`Tudo já vinculado (${audioFiles.length} áudios no Storage)`, 'success');
+                    return;
+                }
+
+                // 4) Match each orphan doc to the closest audio within ±2h
+                const TWO_HOURS = 2 * 60 * 60 * 1000;
+                const used = new Set();
+                let linked = 0;
+                let failed = 0;
+                for (const doc_ of orphanDocs) {
+                    let best = null;
+                    let bestDelta = Infinity;
+                    for (const af of audioFiles) {
+                        if (used.has(af.name)) continue;
+                        const delta = Math.abs(af.ts - doc_.createdMs);
+                        if (delta < bestDelta && delta <= TWO_HOURS) { best = af; bestDelta = delta; }
+                    }
+                    if (best) {
+                        try {
+                            const url = await getDownloadURL(best.ref);
+                            await updateDoc(doc(db, 'consultations', doc_.id), { audioUrl: url });
+                            used.add(best.name);
+                            linked++;
+                            flog(`✅ Vinculado ${best.name} → ${doc_.id} (Δ=${Math.round(bestDelta / 60000)}min)`, 'success');
+                        } catch (e) {
+                            failed++;
+                            flog(`✗ Falha ao vincular ${best.name}: ${e.message}`, 'error');
+                        }
+                    }
+                }
+
+                const msg = `${linked} áudio(s) vinculado(s)${failed ? `, ${failed} falha(s)` : ''}. ${orphanDocs.length - linked - failed} consulta(s) sem áudio próximo.`;
+                showToast(msg, linked > 0 ? 'success' : 'info');
+                flog('🔗 Sincronização concluída: ' + msg, 'info');
+                loadConsultations();
+            } catch (e) {
+                console.error('Relink error:', e);
+                flog(`✗ Erro na sincronização: ${e.message}`, 'error');
+                showToast('Erro: ' + e.message, 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = original; }
+            }
+        }
+
+        // ==========================================
         // CONSULTATION LOGS (per-consultation logs in Firebase)
         // ==========================================
         function showConsultationLogs() {
@@ -3704,9 +3809,28 @@ ${transcriptText.slice(0, 8000)}
                 const logsBtn = (loadedConsultationLogs && loadedConsultationLogs.length)
                     ? ` &nbsp;<button onclick="showConsultationLogs()" style="background:transparent; border:1px solid var(--accent, #2bb78a); color: var(--accent, #2bb78a); padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer;" title="Ver logs salvos com esta consulta">📋 Ver Logs (${loadedConsultationLogs.length})</button>`
                     : '';
+                const audioFileName = (() => {
+                    const d = found.createdAt ? found.createdAt.toDate() : new Date();
+                    const stamp = d.toISOString().slice(0, 16).replace(/[:T]/g, '-');
+                    const pat = (found.patientName || 'consulta').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
+                    return `${stamp}_${pat}.webm`;
+                })();
                 const audioPlayer = found.audioUrl
-                    ? `<div style="margin-top:8px; padding:8px; background:rgba(43,183,138,0.08); border:1px solid rgba(43,183,138,0.25); border-radius:6px; display:flex; align-items:center; gap:8px;"><span style="font-size:11px; color:var(--accent, #2bb78a); white-space:nowrap;">🎧 Áudio da consulta:</span><audio controls preload="none" src="${found.audioUrl}" style="flex:1; height:32px;"></audio></div>`
-                    : '';
+                    ? `<div style="margin-top:10px; padding:10px; background:rgba(43,183,138,0.08); border:1px solid rgba(43,183,138,0.25); border-radius:6px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                            <span style="font-size:12px; color:var(--accent, #2bb78a); font-weight:500;">🎧 Áudio da consulta</span>
+                            <span style="flex:1;"></span>
+                            <a href="${found.audioUrl}" download="${audioFileName}" target="_blank" rel="noopener" style="background:transparent; border:1px solid var(--accent, #2bb78a); color:var(--accent, #2bb78a); padding:3px 9px; border-radius:4px; font-size:11px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="Baixar áudio na íntegra">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                Baixar
+                            </a>
+                            <button onclick="copyAudioUrl('${found.audioUrl}')" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted-fg); padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer;" title="Copiar URL do áudio">🔗 URL</button>
+                        </div>
+                        <audio controls preload="metadata" src="${found.audioUrl}" style="width:100%; height:36px;"></audio>
+                    </div>`
+                    : (found.status === 'completed'
+                        ? `<div style="margin-top:8px; padding:8px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:6px; font-size:11px; color:var(--muted-fg);">⚠️ Esta consulta não tem áudio vinculado. Use <strong>🔗 Sincronizar Áudios</strong> nas configurações para tentar re-associar.</div>`
+                        : '');
                 document.getElementById('session-info').innerHTML = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}${dur}<br>Status: ${found.status || 'N/A'}${logsBtn}${audioPlayer}`;
                 showToast('Consulta carregada', 'success');
                 loadConsultations();
@@ -4035,6 +4159,8 @@ ${transcriptText.slice(0, 8000)}
         window.submitAuth = submitAuth;
         window.skipAuth = skipAuth;
         window.signInWithGoogle = signInWithGoogle;
+        window.copyAudioUrl = copyAudioUrl;
+        window.relinkOrphanAudios = relinkOrphanAudios;
         window.openPatientModal = openPatientModal;
         window.closePatientModal = closePatientModal;
         window.createPatient = createPatient;
