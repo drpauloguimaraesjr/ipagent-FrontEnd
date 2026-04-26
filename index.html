@@ -2916,7 +2916,39 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
         }
 
         // ==========================================
-        // SPEECH RECOGNITION
+        // WHISPER TRANSCRIPTION (substitui Web Speech API por qualidade clínica)
+        // Backend: POST /api/transcribe/audio recebe webm e devolve texto.
+        // ==========================================
+        async function transcribeChunkViaWhisper(blob, consultationId) {
+            if (!blob || blob.size < 1000) return null;
+            try {
+                const formData = new FormData();
+                formData.append('audio', blob, 'chunk.webm');
+                formData.append('language', 'pt');
+                if (consultationId) formData.append('consultation_id', consultationId);
+
+                const headers = {};
+                if (bearerToken) headers['Authorization'] = 'Bearer ' + bearerToken;
+
+                const res = await fetch(baseUrl + '/api/transcribe/audio', {
+                    method: 'POST',
+                    body: formData,
+                    headers: headers,
+                });
+                if (!res.ok) {
+                    const txt = await res.text().catch(() => '');
+                    flog(`✗ Whisper [${res.status}] ${txt.slice(0, 120)}`, 'warn');
+                    return null;
+                }
+                return await res.json();
+            } catch (e) {
+                flog('✗ Whisper error: ' + e.message, 'warn');
+                return null;
+            }
+        }
+
+        // ==========================================
+        // SPEECH RECOGNITION (DESATIVADO — mantido como fallback)
         // ==========================================
         function initSpeechRecognition() {
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3038,19 +3070,22 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
             if (isProcessingCorrection || !correctionQueue.length) return;
             isProcessingCorrection = true;
             const text = correctionQueue.shift();
-            try {
-                const res = await apiFetch('/api/transcription/correct', {
-                    method: 'POST',
-                    body: JSON.stringify({ text })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.corrected && data.corrected !== data.original) {
-                        applyCorrectionToUI(data.original, data.corrected, data.terms_found);
-                    }
-                    fullCorrectedText += (data.corrected || text) + ' ';
-                }
-            } catch (e) { fullCorrectedText += text + ' '; }
+            // /api/transcription/correct desativado: Whisper já entrega texto correto.
+            // Mantemos a fila no-op caso o fallback Web Speech seja reativado.
+            fullCorrectedText += text + ' ';
+            // try {
+            //     const res = await apiFetch('/api/transcription/correct', {
+            //         method: 'POST',
+            //         body: JSON.stringify({ text })
+            //     });
+            //     if (res.ok) {
+            //         const data = await res.json();
+            //         if (data.corrected && data.corrected !== data.original) {
+            //             applyCorrectionToUI(data.original, data.corrected, data.terms_found);
+            //         }
+            //         fullCorrectedText += (data.corrected || text) + ' ';
+            //     }
+            // } catch (e) { fullCorrectedText += text + ' '; }
             isProcessingCorrection = false;
             if (correctionQueue.length) setTimeout(processNextCorrection, 100);
         }
@@ -3077,7 +3112,9 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
         async function toggleRecording() {
             isRecording = !isRecording;
             if (isRecording) {
-                if (!speechRecognition && !initSpeechRecognition()) { isRecording = false; return; }
+                // Web Speech API desativada — usa Whisper local via backend.
+                // Mantido como fallback caso seja necessário reativar:
+                // if (!speechRecognition && !initSpeechRecognition()) { isRecording = false; return; }
                 btnRecord.className = 'mic-btn recording';
                 document.getElementById('audio-status').textContent = 'Ouvindo... Fale agora.';
                 document.getElementById('audio-status-icon').textContent = '✦';
@@ -3109,14 +3146,36 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                     initWaveform(mediaStream);
                     enumerateMicrophones();
 
-                    // Start MediaRecorder for audio capture
+                    // Start MediaRecorder for audio capture + Whisper streaming
                     audioChunks = [];
+                    window.whisperChunkBuffer = [];
                     mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
-                    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-                    mediaRecorder.start(1000); // chunk every 1s
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) {
+                            audioChunks.push(e.data);              // upload completo no fim
+                            window.whisperChunkBuffer.push(e.data); // envio incremental p/ Whisper
+                        }
+                    };
+                    mediaRecorder.start(8000); // chunks de 8s (alinhado ao loop Whisper)
+
+                    if (window.whisperLoopInterval) clearInterval(window.whisperLoopInterval);
+                    window.whisperLoopInterval = setInterval(async () => {
+                        if (!isRecording || !window.whisperChunkBuffer || window.whisperChunkBuffer.length === 0) return;
+                        const chunks = window.whisperChunkBuffer.splice(0);
+                        const blob = new Blob(chunks, { type: 'audio/webm' });
+                        const result = await transcribeChunkViaWhisper(blob, currentDocId);
+                        if (result && result.text && result.text.trim()) {
+                            const newText = result.text.trim();
+                            fullRawText += (fullRawText ? ' ' : '') + newText;
+                            fullCorrectedText += (fullCorrectedText ? ' ' : '') + newText;
+                            addToTranscript(newText);
+                            flog('🎙️ Whisper: ' + newText.slice(0, 80) + (newText.length > 80 ? '...' : ''), 'info');
+                        }
+                    }, 8000);
                 } catch (e) { flog(`❌ Mic/Recorder: ${e.message}`, 'error'); }
 
-                try { speechRecognition.start(); } catch (e) { }
+                // Web Speech start desativada (Whisper substitui):
+                // try { speechRecognition.start(); } catch (e) { }
             } else {
                 btnRecord.className = 'mic-btn idle';
                 document.getElementById('audio-status').textContent = 'Salvando sessão...';
@@ -3126,12 +3185,35 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                 // Flush remaining buffer to transcript
                 flushBuffer();
 
+                // Stop o loop do Whisper antes do mediaRecorder pra não disparar
+                // um envio paralelo enquanto drenamos o último chunk.
+                if (window.whisperLoopInterval) {
+                    clearInterval(window.whisperLoopInterval);
+                    window.whisperLoopInterval = null;
+                }
+
                 // Stop MediaRecorder and upload audio
                 const duration = recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0;
                 if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                     mediaRecorder.stop();
-                    // Wait for final data
+                    // Wait for final data (ondataavailable dispara antes do onstop)
                     await new Promise(r => { mediaRecorder.onstop = r; });
+                }
+
+                // Drena o que sobrou no buffer (último chunk vem do mediaRecorder.stop)
+                if (window.whisperChunkBuffer && window.whisperChunkBuffer.length > 0) {
+                    const lastChunks = window.whisperChunkBuffer.splice(0);
+                    const lastBlob = new Blob(lastChunks, { type: 'audio/webm' });
+                    try {
+                        const r = await transcribeChunkViaWhisper(lastBlob, currentDocId);
+                        if (r && r.text && r.text.trim()) {
+                            const t = r.text.trim();
+                            fullRawText += (fullRawText ? ' ' : '') + t;
+                            fullCorrectedText += (fullCorrectedText ? ' ' : '') + t;
+                            addToTranscript(t);
+                            flog('🎙️ Whisper (final): ' + t.slice(0, 80) + (t.length > 80 ? '...' : ''), 'info');
+                        }
+                    } catch (e) { /* já logado em transcribeChunkViaWhisper */ }
                 }
 
                 let audioUrl = null;
@@ -3236,86 +3318,89 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
             if (!segmentText || segmentText.trim().length < 20) return;
             const gen = document.getElementById('anamnesis-generating');
             const badge = document.getElementById('anamnesis-badge');
-            gen.style.display = 'flex';
+            if (gen) gen.style.display = 'flex';
             try {
-                // Build context of fields already filled so the model focuses on NEW info and avoids duplicating.
-                const filledContext = Object.entries(anamnesisFields)
-                    .filter(([k, v]) => k !== 'resumo_ia' && v && v.trim())
-                    .map(([k, v]) => `- ${k}: ${v.slice(0, 200)}`)
-                    .join('\n') || '(nenhum campo preenchido ainda)';
+                const currentFields = {};
+                for (const [k, v] of Object.entries(anamnesisFields)) {
+                    if (k !== 'resumo_ia' && v && v.trim()) currentFields[k] = v;
+                }
 
-                const prompt = `Voce e um assistente de extracao de anamnese medica em tempo real. Analise o trecho de transcricao abaixo (paciente + medico falando) e extraia as informacoes clinicas relevantes.
-
-Campos possiveis (use estas chaves EXATAS):
-- nome_paciente: Nome do paciente
-- queixa_principal: Queixa principal (com as palavras do paciente)
-- hda: Historia da doenca atual (tempo de inicio, evolucao, fatores agravantes/atenuantes, tratamentos anteriores)
-- medicamentos: Medicamentos em uso (nome - dose - frequencia)
-- alergias: Alergias (medicamentos, alimentos, ambientais - tipo de reacao)
-- patologias_pregressas: Patologias pregressas (diabetes, HAS, dislipidemia, autoimunes, etc.)
-- cirurgias: Cirurgias previas (tipo - ano - intercorrencias)
-- historico_familiar: Historico familiar (cancer, diabetes, HAS, neurologicas, etc.)
-- historico_sexual: Historico sexual e reprodutivo (filhos, libido, preventivos)
-- estilo_vida: Estilo de vida (alcool, tabagismo, drogas, sono, estresse 0-10, atividade fisica)
-- historico_nutricional: Historico nutricional (ultraprocessados, vegetais/frutas, hidratacao)
-- flexibilidade_alimentar: Flexibilidade alimentar (restricoes, dietas, relacao com comida)
-- exame_fisico: Exame fisico (inspecao geral, antropometria: peso/altura/IMC, sinais vitais: FR/FC/PA, avaliacao sistemica)
-- exames_laboratoriais: Exames laboratoriais (resultados de exames de sangue, urina, imagem, etc.)
-- observacoes: Observacoes finais (anotacoes livres, suspeitas diagnosticas, condutas iniciais)
-
-CAMPOS JA PREENCHIDOS (nao repita estas informacoes):
-${filledContext}
-
-REGRAS:
-1. Extraia AGRESSIVAMENTE qualquer informacao clinica relevante deste trecho — incluindo o que o paciente menciona de forma indireta.
-2. Use as chaves EXATAMENTE como definidas (snake_case, sem acentos).
-3. Cada valor deve ser uma string concisa (max 300 caracteres por campo).
-4. NAO repita info que ja esta nos campos preenchidos acima — so traga o NOVO.
-5. Se nada novo aparecer no trecho, retorne {} (objeto vazio).
-6. RESPONDA APENAS COM JSON VALIDO. Sem texto antes ou depois. Sem markdown. Sem comentarios.
-
-Exemplo de resposta valida:
-{"queixa_principal": "dor abdominal ha 3 dias", "medicamentos": "omeprazol 20mg 1x ao dia"}
-
-Trecho da transcricao:
-"""
-${segmentText}
-"""
-
-JSON:`;
-
-                const res = await apiFetch('/api/chat/stream', {
+                const res = await apiFetch('/api/anamnesis/extract', {
                     method: 'POST',
-                    body: JSON.stringify({ message: prompt, stream: false })
+                    body: JSON.stringify({
+                        transcription: segmentText,
+                        current_fields: currentFields,
+                        consultation_id: currentDocId || null,
+                        include_rag: true,
+                    })
                 });
                 const data = await res.json();
-                const responseText = data.response || data.message || data.content || '';
 
-                // Extract JSON from response
-                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    const extracted = JSON.parse(jsonMatch[0]);
-                    let changed = false;
-                    for (const [key, value] of Object.entries(extracted)) {
-                        if (key in anamnesisFields && value && typeof value === 'string' && value.trim()) {
-                            // Append to existing or set new
-                            if (anamnesisFields[key]) {
-                                anamnesisFields[key] = anamnesisFields[key] + '; ' + value.trim();
-                            } else {
-                                anamnesisFields[key] = value.trim();
-                            }
-                            changed = true;
+                if (!data.success || !data.fields) {
+                    console.warn('Anamnese extract falhou:', data);
+                    return;
+                }
+
+                let changed = false;
+                for (const [key, value] of Object.entries(data.fields)) {
+                    if (key in anamnesisFields && value && typeof value === 'string' && value.trim()) {
+                        const trimmed = value.trim();
+                        const lower = trimmed.toLowerCase();
+                        if (lower.startsWith('não informado') || lower.startsWith('nao informado')) continue;
+                        if (anamnesisFields[key] && !anamnesisFields[key].includes(trimmed)) {
+                            anamnesisFields[key] = anamnesisFields[key] + '; ' + trimmed;
+                        } else if (!anamnesisFields[key]) {
+                            anamnesisFields[key] = trimmed;
                         }
-                    }
-                    if (changed) {
-                        updateAnamnesisUI();
-                        if (!document.getElementById('tab-anamnesis').classList.contains('active')) {
-                            badge.style.display = 'inline-block';
-                        }
+                        changed = true;
                     }
                 }
-            } catch (e) { console.warn('Anamnese extraction error:', e); }
-            finally { gen.style.display = 'none'; }
+
+                if (Array.isArray(data.referencias_cientificas) && data.referencias_cientificas.length > 0) {
+                    window.currentReferences = (window.currentReferences || []).concat(data.referencias_cientificas);
+                    renderReferences(window.currentReferences);
+                    changed = true;
+                }
+
+                if (changed) {
+                    updateAnamnesisUI();
+                    if (badge && !document.getElementById('tab-anamnesis').classList.contains('active')) {
+                        badge.style.display = 'inline-block';
+                    }
+                }
+            } catch (e) {
+                console.warn('Anamnese extraction error:', e);
+            } finally {
+                if (gen) gen.style.display = 'none';
+            }
+        }
+
+        function renderReferences(refs) {
+            let container = document.getElementById('anamnesis-references-container');
+            if (!container) {
+                const formContainer = document.getElementById('anamnesis-container');
+                if (!formContainer) return;
+                container = document.createElement('div');
+                container.id = 'anamnesis-references-container';
+                container.style.cssText = 'margin-top:16px;padding:12px;border:1px solid var(--border,#2a2a2a);border-radius:8px;background:rgba(43,183,138,0.05);';
+                formContainer.parentNode.insertBefore(container, formContainer.nextSibling);
+            }
+            if (!refs || refs.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'block';
+            const escape = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            let html = `<div style="font-size:11px;font-weight:700;color:var(--accent,#2bb78a);margin-bottom:8px;letter-spacing:0.5px;">REFERÊNCIAS CIENTÍFICAS RAG (${refs.length})</div>`;
+            for (const ref of refs) {
+                html += `
+                    <div style="padding:8px 0;border-top:1px solid var(--border,#2a2a2a);">
+                        <div style="font-size:12px;color:var(--fg,#e5e5e5);font-weight:600;">${escape(ref.titulo)}</div>
+                        <div style="font-size:10px;color:var(--muted-fg,#888);margin-top:2px;">${escape(ref.autores)} ${ref.ano?'· '+escape(ref.ano):''} ${ref.fonte?'· '+escape(ref.fonte):''}</div>
+                        ${ref.comentario?`<div style="font-size:11px;color:var(--fg,#e5e5e5);margin-top:4px;font-style:italic;opacity:0.85;">→ ${escape(ref.comentario)}</div>`:''}
+                    </div>`;
+            }
+            container.innerHTML = html;
         }
 
         async function generateAnamnesis() {
@@ -3335,6 +3420,9 @@ JSON:`;
                 showToast('Sem texto de transcrição para reprocessar', 'error');
                 return;
             }
+            window.currentReferences = [];
+            const refsContainer = document.getElementById('anamnesis-references-container');
+            if (refsContainer) refsContainer.style.display = 'none';
             const btn = document.getElementById('btn-reprocess-anamnesis');
             const originalHTML = btn ? btn.innerHTML : '';
             if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Reprocessando...'; }
