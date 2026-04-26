@@ -2193,6 +2193,10 @@
             <div class="modal-input-group">
                 <label>Bearer Token (Opcional)</label>
                 <input type="password" id="ipagent-token" placeholder="ipagent-sk-...">
+                <div style="display:flex; gap:6px; margin-top:6px; align-items:center; flex-wrap:wrap;">
+                    <button onclick="clearBearerToken()" style="background:transparent; border:1px solid rgba(245,158,11,0.4); color:#f59e0b; padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer;" title="Remove o token salvo. Use se está recebendo 403 do backend.">🔓 Limpar Bearer Token</button>
+                    <span style="font-size:10px; color:var(--muted-fg); line-height:1.4;">Use isso se está recebendo erros <strong>403</strong>. O backend novo provavelmente não reconhece o token antigo.</span>
+                </div>
             </div>
             <div class="modal-section">
                 <div class="modal-section-title">MODELO DE ATENDIMENTO</div>
@@ -2596,8 +2600,10 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                 const res = await fetch(url, { ...options, headers: { ...getHeaders(), ...(options.headers || {}) } });
                 if (!res.ok) {
                     flog(`✗ ${method} ${endpoint} [${res.status}] ${res.statusText}`, 'warn');
-                } else if (!isQuiet || isVerbose()) {
-                    flog(`✓ ${method} ${endpoint} [${res.status}]`, 'success');
+                    if (res.status === 403) notify403(endpoint);
+                } else {
+                    if (!isQuiet || isVerbose()) flog(`✓ ${method} ${endpoint} [${res.status}]`, 'success');
+                    reset403Counter();
                 }
                 return res;
             } catch (e) {
@@ -2739,6 +2745,37 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
             if (bearerToken) h['Authorization'] = `Bearer ${bearerToken}`;
             return h;
         }
+
+        // Track repeated 403s — usually means the saved bearer token doesn't
+        // exist in the current backend's api_keys.json (e.g. after a backend
+        // reset). We surface a clear suggestion to clear the token.
+        let _consecutive403s = 0;
+        let _last403Toast = 0;
+        function notify403(endpoint) {
+            _consecutive403s++;
+            if (_consecutive403s < 3) return;
+            const now = Date.now();
+            if (now - _last403Toast < 30000) return; // throttle to once per 30s
+            _last403Toast = now;
+            if (bearerToken) {
+                showToast('Bearer token rejeitado pelo backend (403). Configurações → "Limpar Bearer Token".', 'error');
+                flog('⚠️ Backend rejeitou o Bearer token. Limpe-o em Configurações ou reconfigure no backend.', 'warn');
+            } else {
+                showToast(`Backend retornou 403 em ${endpoint}. Verifique permissões.`, 'error');
+            }
+        }
+        function reset403Counter() { _consecutive403s = 0; }
+
+        function clearBearerToken() {
+            bearerToken = '';
+            localStorage.removeItem('ipagent-token');
+            const inp = document.getElementById('ipagent-token');
+            if (inp) inp.value = '';
+            _consecutive403s = 0;
+            showToast('Bearer token removido. Modo anônimo ativo.', 'success');
+            flog('🔓 Bearer token limpo — usando modo anônimo', 'info');
+        }
+        window.clearBearerToken = clearBearerToken;
 
         let lastConnectionState = null;
 
