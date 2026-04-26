@@ -3182,8 +3182,14 @@ ${segmentText}
             await extractAnamnesisFromSegment(text);
         }
 
+        function getTranscriptText() {
+            // textContent works even when the tab is display:none (innerText doesn't)
+            const fromDom = (transcriptionContainer && transcriptionContainer.textContent || '').trim();
+            return (fromDom || fullCorrectedText || fullRawText || '').trim();
+        }
+
         async function reprocessAnamnesisFromTranscription() {
-            const text = (transcriptionContainer.innerText || fullCorrectedText || fullRawText || '').trim();
+            const text = getTranscriptText();
             if (!text || text.length < 20) {
                 showToast('Sem texto de transcrição para reprocessar', 'error');
                 return;
@@ -3224,11 +3230,13 @@ ${segmentText}
         }
 
         async function generateAnamnesisSummary() {
-            const transcriptText = (transcriptionContainer.innerText || fullCorrectedText || fullRawText || '').trim();
+            const transcriptText = getTranscriptText();
             const filledFields = Object.entries(anamnesisFields)
                 .filter(([k, v]) => k !== 'resumo_ia' && v && v.trim())
                 .map(([k, v]) => `[${k}] ${v}`)
                 .join('\n');
+
+            flog(`Gerar Resumo: transcript=${transcriptText.length} chars, campos=${filledFields ? filledFields.split('\n').length : 0}`, 'info');
 
             if (!transcriptText && !filledFields) {
                 showToast('Sem dados para gerar resumo', 'error');
@@ -3243,27 +3251,27 @@ ${segmentText}
             if (gen) gen.style.display = 'flex';
 
             try {
-                const prompt = `Você é um médico assistente. Com base na anamnese estruturada abaixo e na transcrição da consulta, gere um RESUMO CLÍNICO REFLEXIVO em português, em formato de parágrafo único (4-8 linhas).
+                const prompt = `Voce e um medico assistente. Com base na anamnese estruturada abaixo e na transcricao da consulta, gere um RESUMO CLINICO REFLEXIVO em portugues, em formato de paragrafo unico (4-8 linhas).
 
 O resumo deve conter:
-1. Síntese do quadro clínico do paciente (queixa principal + HDA condensada).
-2. Fatores de risco e antecedentes relevantes (familiares, patológicos, estilo de vida).
-3. Hipóteses diagnósticas ou linhas de raciocínio clínico (se houver elementos suficientes).
-4. Sugestões de conduta inicial ou exames complementares pertinentes.
-5. Pontos de atenção / alertas (red flags, interações, lacunas na anamnese).
+1. Sintese do quadro clinico do paciente (queixa principal + HDA condensada).
+2. Fatores de risco e antecedentes relevantes (familiares, patologicos, estilo de vida).
+3. Hipoteses diagnosticas ou linhas de raciocinio clinico (se houver elementos suficientes).
+4. Sugestoes de conduta inicial ou exames complementares pertinentes.
+5. Pontos de atencao / alertas (red flags, interacoes, lacunas na anamnese).
 
 REGRAS:
-- Tom técnico-médico, conciso, sem repetir literalmente o que já está nos campos.
-- Não invente dados; se faltar informação, mencione que precisa ser investigada.
-- NÃO use bullet points nem títulos. Apenas parágrafo corrido.
-- Responda APENAS com o texto do resumo, sem cabeçalhos.
+- Tom tecnico-medico, conciso, sem repetir literalmente o que ja esta nos campos.
+- Nao invente dados; se faltar informacao, mencione que precisa ser investigada.
+- NAO use bullet points nem titulos. Apenas paragrafo corrido.
+- Responda APENAS com o texto do resumo, sem cabecalhos.
 
 ANAMNESE ESTRUTURADA:
 """
 ${filledFields || '(nenhum campo preenchido ainda)'}
 """
 
-TRANSCRIÇÃO DA CONSULTA:
+TRANSCRICAO DA CONSULTA:
 """
 ${transcriptText.slice(0, 8000)}
 """`;
@@ -3272,15 +3280,20 @@ ${transcriptText.slice(0, 8000)}
                     method: 'POST',
                     body: JSON.stringify({ message: prompt, stream: false })
                 });
+                if (!res.ok) {
+                    showToast(`Erro HTTP ${res.status} ao gerar resumo`, 'error');
+                    return;
+                }
                 const data = await res.json();
-                const summary = (data.response || data.message || data.content || '').trim();
+                const summary = (data.response || data.message || data.content || data.text || '').trim();
 
                 if (summary) {
                     anamnesisFields.resumo_ia = summary;
                     updateAnamnesisUI();
                     showToast('Resumo da IA gerado!', 'success');
                 } else {
-                    showToast('Resposta vazia da IA', 'error');
+                    flog(`Resposta vazia da IA. Keys: ${Object.keys(data).join(', ')}`, 'warn');
+                    showToast('Resposta vazia da IA — veja os logs', 'error');
                 }
             } catch (e) {
                 console.error('Summary generation error:', e);
