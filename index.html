@@ -4106,21 +4106,54 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
             if (isRecording && docId === currentDocId) {
                 showToast('Pare a gravação antes de apagar', 'info'); return;
             }
-            if (!confirm('Apagar esta consulta?\n\nO documento + áudio no Storage serão removidos. Esta ação não pode ser desfeita.')) return;
             try {
+                // Carrega TODOS os docs primeiro pra detectar áudio compartilhado.
+                // Se mais de uma consulta aponta pro mesmo arquivo de áudio
+                // (acontece com duplicatas vinculadas pelo "Sincronizar Áudios"),
+                // apagar o arquivo aqui órfana as outras. Então só apagamos o
+                // áudio do Storage quando este doc é o ÚNICO referenciando.
                 const snap = await getDocs(query(collection(db, 'consultations')));
                 let data = null;
+                let targetAudioName = null;
+                let audioUsedElsewhere = 0;
+                let sharingDocs = [];
                 snap.forEach(d => { if (d.id === docId) data = d.data(); });
                 if (data && data.audioUrl) {
                     const m = data.audioUrl.match(/(\d{13}_audio\.webm)/);
-                    if (m) {
-                        try {
-                            await deleteObject(storageRef(storage, 'consultations/' + m[1]));
-                            flog(`🗑 Áudio ${m[1]} apagado do Storage`, 'info');
-                        } catch (e) {
-                            flog('⚠ Falha apagando áudio (segue apagando doc): ' + e.message, 'warn');
+                    if (m) targetAudioName = m[1];
+                }
+                if (targetAudioName) {
+                    snap.forEach(d => {
+                        if (d.id === docId) return;
+                        const dd = d.data();
+                        if (!dd.audioUrl) return;
+                        const m = dd.audioUrl.match(/(\d{13}_audio\.webm)/);
+                        if (m && m[1] === targetAudioName) {
+                            audioUsedElsewhere++;
+                            sharingDocs.push(d.id);
                         }
+                    });
+                }
+
+                let confirmMsg = 'Apagar esta consulta?\n\n';
+                if (targetAudioName && audioUsedElsewhere > 0) {
+                    confirmMsg += `O áudio "${targetAudioName}" também é usado por outra(s) ${audioUsedElsewhere} consulta(s) — ele será PRESERVADO no Storage.\n\nAção não pode ser desfeita.`;
+                } else if (targetAudioName) {
+                    confirmMsg += `O documento + áudio "${targetAudioName}" serão removidos. Esta ação não pode ser desfeita.`;
+                } else {
+                    confirmMsg += 'Esta ação não pode ser desfeita.';
+                }
+                if (!confirm(confirmMsg)) return;
+
+                if (targetAudioName && audioUsedElsewhere === 0) {
+                    try {
+                        await deleteObject(storageRef(storage, 'consultations/' + targetAudioName));
+                        flog(`🗑 Áudio ${targetAudioName} apagado do Storage`, 'info');
+                    } catch (e) {
+                        flog('⚠ Falha apagando áudio (segue apagando doc): ' + e.message, 'warn');
                     }
+                } else if (targetAudioName) {
+                    flog(`🛡 Áudio ${targetAudioName} preservado — compartilhado com: ${sharingDocs.join(', ')}`, 'info');
                 }
                 await deleteDoc(doc(db, 'consultations', docId));
                 flog(`🗑 Consulta ${docId} apagada`, 'success');
