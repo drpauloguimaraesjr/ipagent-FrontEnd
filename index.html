@@ -2214,6 +2214,9 @@
             </div>
             <div class="modal-section">
                 <div class="modal-section-title">MANUTENÇÃO</div>
+                <button id="btn-pending-audios" onclick="showPendingAudiosBanner()" style="width:100%; padding:8px 12px; background:transparent; color:#f59e0b; border:1px solid #f59e0b; border-radius:6px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;" title="Mostra áudios que ficaram pendentes de upload e permite reenvio">
+                    🛡️ Verificar áudios pendentes (cofre local)
+                </button>
                 <button id="btn-relink-audios" onclick="relinkOrphanAudios()" style="width:100%; padding:8px 12px; background:transparent; color:var(--accent, #2bb78a); border:1px solid var(--accent, #2bb78a); border-radius:6px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;" title="Procura áudios no Storage e tenta vincular a consultas que não têm áudio">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                     🔗 Sincronizar Áudios Órfãos
@@ -2430,6 +2433,9 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                 fixStaleRecordingStatus();
                 loadConsultations();
                 loadPatients();
+                // Verifica se há áudios pendentes (gravações onde o upload
+                // anterior falhou) e tenta reenviar automaticamente.
+                checkPendingAudios();
             });
 
             loadConsultations();
@@ -3221,22 +3227,82 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                     } catch (e) { /* já logado em transcribeChunkViaWhisper */ }
                 }
 
+                // Áudio: cofre local (IndexedDB) ANTES do upload. Se Firebase
+                // Storage falhar, o blob fica salvo offline e é re-tentado no
+                // próximo carregamento da página. Se a aba fechar antes do
+                // upload terminar, o blob também sobrevive.
                 let audioUrl = null;
-                if (audioChunks.length > 0 && isFirebaseReady) {
+                let savedAudioFileName = null;
+                if (audioChunks.length > 0) {
+                    savedAudioFileName = `${Date.now()}_audio.webm`;
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const sizeMB = (audioBlob.size / 1024 / 1024).toFixed(1);
+
+                    // 1) Cofre local (IndexedDB) — primeiro, antes de qualquer
+                    //    operação de rede. Se isso falhar, ainda assim tentamos
+                    //    upload, mas avisamos que não há rede de segurança.
+                    let safetyNetSaved = false;
                     try {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const fileName = `consultations/${Date.now()}_audio.webm`;
-                        const fileRef = storageRef(storage, fileName);
-                        await uploadBytes(fileRef, audioBlob);
-                        audioUrl = await getDownloadURL(fileRef);
-                        showToast('Áudio salvo no Firebase!', 'success');
-                    } catch (e) { flog(`❌ Upload áudio falhou: ${e.message}`, 'error'); showToast('Erro ao salvar áudio', 'error'); }
+                        await putPendingAudio(savedAudioFileName, audioBlob, currentDocId);
+                        safetyNetSaved = true;
+                        flog(`💾 Cofre local: ${savedAudioFileName} (${sizeMB} MB) salvo offline`, 'info');
+                    } catch (e) {
+                        flog(`⚠ Cofre local falhou (${e.message}) — prosseguindo só com upload`, 'warn');
+                    }
+
+                    // 2) Upload pro Firebase Storage
+                    if (isFirebaseReady) {
+                        try {
+                            const fileRef = storageRef(storage, 'consultations/' + savedAudioFileName);
+                            await uploadBytes(fileRef, audioBlob, { contentType: 'audio/webm' });
+                            audioUrl = await getDownloadURL(fileRef);
+                            showToast('Áudio salvo no Firebase!', 'success');
+                            // Sucesso → limpa cofre local pra não acumular
+                            if (safetyNetSaved) {
+                                try { await deletePendingAudio(savedAudioFileName); } catch {}
+                            }
+                        } catch (e) {
+                            flog(`❌ Upload áudio falhou: ${e.message}`, 'error');
+                            if (safetyNetSaved) {
+                                showToast('Áudio guardado localmente — reenvio automático no próximo load', 'warn');
+                                flog(`🛡 Áudio preservado em IndexedDB — abre o app de novo pra reenvio automático`, 'info');
+                            } else {
+                                showToast('Erro ao salvar áudio (sem cofre local)', 'error');
+                            }
+                            // Fallback adicional: dispara download pro disco
+                            // pra usuário ter cópia em caso de cofre + upload falharem.
+                            try {
+                                const a = document.createElement('a');
+                                a.href = URL.createObjectURL(audioBlob);
+                                a.download = savedAudioFileName;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+                                flog(`💾 Áudio também baixado pro disco como ${savedAudioFileName}`, 'info');
+                            } catch {}
+                        }
+                    } else if (safetyNetSaved) {
+                        flog('Firebase offline — áudio guardado em IndexedDB, será enviado quando voltar', 'warn');
+                        showToast('Firebase offline — áudio guardado localmente', 'warn');
+                    }
                 }
 
                 if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
                 generateAnamnesis();
                 flog('⏹️ Gravação encerrada. Salvando...', 'info');
                 await saveConsultation('completed', audioUrl, duration);
+
+                // Se o upload falhou, o cofre local ainda tem o blob mas não
+                // sabe a qual consulta ele pertence (currentDocId acabou de ser
+                // criado pelo saveConsultation acima). Anota isso no entry pra
+                // o reenvio automático religar à consulta certa.
+                if (!audioUrl && savedAudioFileName && currentDocId) {
+                    try {
+                        await updatePendingAudioConsultationId(savedAudioFileName, currentDocId);
+                        flog(`🔗 Cofre local agora referencia consulta ${currentDocId}`, 'info');
+                    } catch {}
+                }
                 flog(`✅ Sessão salva (duração: ${Math.floor(duration / 60)}m${(duration % 60).toString().padStart(2, '0')}s)`, 'success');
                 document.getElementById('audio-status').textContent = 'Sessão encerrada.';
                 document.getElementById('audio-status-icon').textContent = '🎙️';
@@ -3894,6 +3960,160 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
             } finally {
                 setBtn(originalHTML, false);
             }
+        }
+
+        // ==========================================
+        // PENDING-AUDIO SAFETY NET (IndexedDB)
+        // Cada gravação encerrada é gravada localmente ANTES de tentar upload.
+        // Se Firebase Storage falhar, o blob fica salvo aqui e é re-tentado no
+        // próximo carregamento da página. Garante que nenhuma gravação se perca
+        // por falha de rede / token expirado / aba fechada cedo demais.
+        // ==========================================
+        const PENDING_AUDIO_DB = 'ipagent-pending-audio';
+        const PENDING_AUDIO_STORE = 'audios';
+
+        function _openPendingAudioDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(PENDING_AUDIO_DB, 1);
+                req.onerror = () => reject(req.error);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(PENDING_AUDIO_STORE)) {
+                        db.createObjectStore(PENDING_AUDIO_STORE, { keyPath: 'name' });
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+            });
+        }
+
+        async function putPendingAudio(name, blob, consultationId) {
+            const db = await _openPendingAudioDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(PENDING_AUDIO_STORE, 'readwrite');
+                const req = tx.objectStore(PENDING_AUDIO_STORE).put({
+                    name, blob, consultationId: consultationId || null, createdAt: Date.now()
+                });
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function updatePendingAudioConsultationId(name, consultationId) {
+            const db = await _openPendingAudioDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(PENDING_AUDIO_STORE, 'readwrite');
+                const store = tx.objectStore(PENDING_AUDIO_STORE);
+                const getReq = store.get(name);
+                getReq.onsuccess = () => {
+                    const entry = getReq.result;
+                    if (!entry) return resolve();
+                    entry.consultationId = consultationId;
+                    const putReq = store.put(entry);
+                    putReq.onsuccess = () => resolve();
+                    putReq.onerror = () => reject(putReq.error);
+                };
+                getReq.onerror = () => reject(getReq.error);
+            });
+        }
+
+        async function deletePendingAudio(name) {
+            const db = await _openPendingAudioDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(PENDING_AUDIO_STORE, 'readwrite');
+                const req = tx.objectStore(PENDING_AUDIO_STORE).delete(name);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function listPendingAudios() {
+            const db = await _openPendingAudioDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(PENDING_AUDIO_STORE, 'readonly');
+                const req = tx.objectStore(PENDING_AUDIO_STORE).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function retryPendingAudioUpload(entry) {
+            if (!isFirebaseReady) return false;
+            try {
+                const fileRef = storageRef(storage, 'consultations/' + entry.name);
+                await uploadBytes(fileRef, entry.blob, { contentType: 'audio/webm' });
+                const url = await getDownloadURL(fileRef);
+                if (entry.consultationId) {
+                    try {
+                        await updateDoc(doc(db, 'consultations', entry.consultationId), { audioUrl: url });
+                        flog(`🔗 Áudio ${entry.name} religado ao doc ${entry.consultationId}`, 'success');
+                    } catch (e) {
+                        flog(`⚠ Áudio reenviado mas falha ao atualizar doc ${entry.consultationId}: ${e.message}`, 'warn');
+                    }
+                }
+                await deletePendingAudio(entry.name);
+                flog(`✅ Áudio pendente ${entry.name} reenviado`, 'success');
+                return true;
+            } catch (e) {
+                flog(`⚠ Reenvio falhou ${entry.name}: ${e.message}`, 'warn');
+                return false;
+            }
+        }
+
+        async function checkPendingAudios() {
+            try {
+                const pending = await listPendingAudios();
+                if (!pending.length) return;
+                flog(`🔄 ${pending.length} áudio(s) pendente(s) detectado(s) — tentando reenviar`, 'info');
+                let success = 0;
+                for (const entry of pending) {
+                    const ok = await retryPendingAudioUpload(entry);
+                    if (ok) success++;
+                }
+                if (success === pending.length) {
+                    showToast(`${success} áudio(s) pendente(s) reenviado(s) com sucesso`, 'success');
+                } else {
+                    showPendingAudiosBanner();
+                }
+            } catch (e) {
+                console.warn('checkPendingAudios:', e);
+            }
+        }
+
+        async function showPendingAudiosBanner() {
+            const existing = document.getElementById('pending-audios-banner');
+            if (existing) existing.remove();
+            const pending = await listPendingAudios();
+            if (!pending.length) return;
+            const totalMB = pending.reduce((acc, e) => acc + (e.blob ? e.blob.size : 0), 0) / 1024 / 1024;
+            const banner = document.createElement('div');
+            banner.id = 'pending-audios-banner';
+            banner.style.cssText = 'position:fixed;top:64px;right:16px;z-index:9999;background:rgba(245,158,11,0.96);color:#1a1a1a;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.4);font-size:12px;max-width:340px;line-height:1.5;';
+            banner.innerHTML = `
+                <div style="font-weight:700;margin-bottom:4px;">⚠ ${pending.length} áudio(s) não enviado(s) ao Firebase</div>
+                <div style="font-size:11px;">Os arquivos (${totalMB.toFixed(1)} MB) estão salvos no seu navegador, não vão se perder. Tente reenviar quando a conexão estabilizar.</div>
+                <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+                    <button onclick="checkPendingAudios()" style="background:#1a1a1a;color:#fff;border:none;padding:5px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;">🔄 Reenviar agora</button>
+                    <button onclick="downloadAllPendingAudios()" style="background:transparent;border:1px solid #1a1a1a;color:#1a1a1a;padding:5px 10px;border-radius:4px;font-size:11px;cursor:pointer;">💾 Baixar tudo</button>
+                    <button onclick="document.getElementById('pending-audios-banner').remove()" style="background:transparent;border:none;color:#1a1a1a;padding:5px 6px;font-size:14px;cursor:pointer;line-height:1;">✕</button>
+                </div>
+            `;
+            document.body.appendChild(banner);
+        }
+
+        async function downloadAllPendingAudios() {
+            const pending = await listPendingAudios();
+            for (const entry of pending) {
+                if (!entry.blob) continue;
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(entry.blob);
+                a.download = entry.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+                await new Promise(r => setTimeout(r, 200)); // gap pra browser não bloquear
+            }
+            showToast(`${pending.length} áudio(s) baixado(s) pro disco`, 'success');
         }
 
         // Scan Firebase Storage for "consultations/{ts}_audio.webm" files and try to
@@ -4955,6 +5175,9 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
         window.linkAudioToCurrent = linkAudioToCurrent;
         window.uploadAudioFromDisk = uploadAudioFromDisk;
         window.deleteConsultation = deleteConsultation;
+        window.checkPendingAudios = checkPendingAudios;
+        window.showPendingAudiosBanner = showPendingAudiosBanner;
+        window.downloadAllPendingAudios = downloadAllPendingAudios;
         // Wire the file input to uploadAudioFromDisk on first load
         document.addEventListener('DOMContentLoaded', () => {
             const inp = document.getElementById('manual-link-file-input');
