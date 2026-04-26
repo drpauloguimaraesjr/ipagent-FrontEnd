@@ -3100,8 +3100,27 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
             }
         }
 
-        function endSession() {
-            if (isRecording) toggleRecording();
+        async function endSession() {
+            // 3 cases:
+            //   1) Currently recording  → stop, which already marks status='completed' via saveConsultation
+            //   2) Paused with content  → mark as completed in Firestore so it shows up correctly in the sidebar
+            //   3) Nothing loaded       → just reset the UI
+            if (isRecording) {
+                await toggleRecording();
+                showToast('Consulta encerrada', 'success');
+            } else if (currentDocId && (fullRawText.trim() || currentAnamnesis)) {
+                try {
+                    await saveConsultation('completed');
+                    flog('🏁 Consulta marcada como concluída', 'success');
+                    showToast('Consulta encerrada', 'success');
+                    loadConsultations();
+                } catch (e) {
+                    console.error('endSession error:', e);
+                    showToast('Erro ao encerrar: ' + e.message, 'error');
+                }
+            } else {
+                showToast('Nada para encerrar', 'info');
+            }
             document.getElementById('session-timer').textContent = '00:00';
             document.getElementById('audio-status').textContent = 'Pressione Iniciar para começar';
         }
@@ -4458,6 +4477,22 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
         window.copyCorsCmd = copyCorsCmd;
         window.relinkOrphanAudios = relinkOrphanAudios;
         window.downloadAsMp3 = downloadAsMp3;
+        window.toggleTheme = toggleTheme;
+        window.dismissOfflineBanner = function () {
+            const b = document.getElementById('offline-banner');
+            if (b) b.style.display = 'none';
+        };
+        window.closeClinicalModal = function () {
+            const m = document.getElementById('clinical-opinion-modal');
+            if (m) m.classList.remove('active');
+        };
+        window.showConsultationLogs = showConsultationLogs;
+        window.closeConsultationLogs = closeConsultationLogs;
+        window.copyConsultationLogs = copyConsultationLogs;
+        window.exportConsultationLogs = exportConsultationLogs;
+        window.reprocessAnamnesisFromTranscription = reprocessAnamnesisFromTranscription;
+        window.generateAnamnesisSummary = generateAnamnesisSummary;
+        window.loadTemplate = loadTemplate;
         window.openPatientModal = openPatientModal;
         window.closePatientModal = closePatientModal;
         window.createPatient = createPatient;
