@@ -1770,6 +1770,9 @@
             header {
                 padding: 0 10px 0 48px;
                 gap: 6px;
+                /* Respeita o notch / status bar do iPhone em PWA standalone */
+                padding-top: env(safe-area-inset-top, 0);
+                height: calc(56px + env(safe-area-inset-top, 0));
             }
             .header-right {
                 gap: 4px;
@@ -1777,6 +1780,110 @@
             .header-btn {
                 padding: 4px 8px;
                 font-size: 0.78rem;
+            }
+            /* Esconde labels em botões de header pra caber na largura do iPhone */
+            .header-btn span,
+            .header-btn-label,
+            #user-email-short,
+            .header-status-text {
+                display: none !important;
+            }
+            /* Compacta o badge "IA Online" / "Firebase" pra ícone-only */
+            #connection-badge,
+            #firebase-badge {
+                padding: 4px 6px !important;
+                font-size: 0;
+            }
+            #connection-badge::before,
+            #firebase-badge::before {
+                content: '';
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+            /* Colunas empilhadas: reduz padding pra ganhar espaço vertical */
+            .column-content { padding: 10px 12px; }
+            .column-header { padding: 10px 12px 8px; }
+            /* Bottom safe area pro home indicator + espaço pro mic flutuante */
+            main {
+                padding-bottom: calc(80px + env(safe-area-inset-bottom, 0));
+            }
+            /* Toca em alvos menores que 44px é ruim no iOS — bumpa botões clicáveis */
+            .mic-btn { min-width: 64px; min-height: 64px; }
+            .tab-btn { min-height: 44px; padding: 10px 14px; }
+            /* Modais ocupam tela inteira no celular */
+            .modal-overlay.active .modal {
+                max-width: 100% !important;
+                max-height: calc(100vh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0));
+                margin: env(safe-area-inset-top, 0) 8px env(safe-area-inset-bottom, 0);
+                border-radius: 12px;
+            }
+            /* Log panel compacto */
+            .log-panel { max-width: 100%; right: 0; left: 0; bottom: 0; }
+        }
+
+        /* Botão de mic flutuante (FAB) — sempre visível em mobile.
+           Usa visibility:hidden em vez de display:none pra animar.
+           Em desktop fica escondido (uma cópia do mic central principal). */
+        .floating-mic {
+            display: none;
+        }
+        @media (max-width: 900px) {
+            .floating-mic {
+                display: flex;
+                position: fixed;
+                bottom: calc(16px + env(safe-area-inset-bottom, 0));
+                right: 16px;
+                z-index: 1000;
+                width: 64px;
+                height: 64px;
+                border-radius: 50%;
+                border: none;
+                color: #fff;
+                background: var(--accent, #2bb78a);
+                box-shadow: 0 6px 24px rgba(43, 183, 138, 0.5),
+                            0 2px 6px rgba(0, 0, 0, 0.3);
+                cursor: pointer;
+                align-items: center;
+                justify-content: center;
+                font-size: 26px;
+                transition: transform 0.2s ease, background 0.2s ease;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .floating-mic:active {
+                transform: scale(0.92);
+            }
+            .floating-mic.recording {
+                background: var(--destructive, #ef4444);
+                animation: floatingMicPulse 1.4s ease-in-out infinite;
+            }
+            @keyframes floatingMicPulse {
+                0%, 100% { box-shadow: 0 6px 24px rgba(239, 68, 68, 0.5), 0 0 0 0 rgba(239, 68, 68, 0.5); }
+                50% { box-shadow: 0 6px 24px rgba(239, 68, 68, 0.5), 0 0 0 18px rgba(239, 68, 68, 0); }
+            }
+            .floating-mic-status {
+                position: fixed;
+                bottom: calc(16px + env(safe-area-inset-bottom, 0));
+                right: 92px;
+                z-index: 1000;
+                background: rgba(0, 0, 0, 0.78);
+                color: #fff;
+                padding: 8px 12px;
+                border-radius: 18px;
+                font-size: 11px;
+                font-family: 'DM Mono', monospace;
+                pointer-events: none;
+                white-space: nowrap;
+                max-width: calc(100vw - 120px);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+            .floating-mic-status.visible {
+                opacity: 1;
             }
         }
     </style>
@@ -2363,6 +2470,12 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
         </div>
     </div>
 
+    <!-- Floating mic button (mobile only) -->
+    <button id="floating-mic" class="floating-mic" onclick="toggleRecording()" title="Iniciar/Parar gravação" aria-label="Toggle gravação">
+        🎙️
+    </button>
+    <div id="floating-mic-status" class="floating-mic-status"></div>
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
@@ -2758,9 +2871,12 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
         function startSessionTimer() {
             sessionStartTime = Date.now();
             const timerEl = document.getElementById('session-timer');
+            const fabStatus = document.getElementById('floating-mic-status');
             sessionTimerInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
-                timerEl.textContent = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+                const fmt = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+                timerEl.textContent = fmt;
+                if (fabStatus) fabStatus.textContent = `🔴 ${fmt}`;
             }, 1000);
         }
 
@@ -2927,14 +3043,42 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
         }
 
         // ==========================================
+        // CODEC NEGOTIATION
+        // Safari iOS não suporta audio/webm — só audio/mp4 (AAC).
+        // Detectamos o melhor MIME suportado e mantemos consistência em
+        // toda a pipeline (MediaRecorder, blob, filename, FormData, regex).
+        // ==========================================
+        function pickAudioMime() {
+            if (typeof MediaRecorder === 'undefined') return { mime: '', ext: 'webm' };
+            const candidates = [
+                { mime: 'audio/webm;codecs=opus', ext: 'webm' },
+                { mime: 'audio/webm', ext: 'webm' },
+                { mime: 'audio/mp4;codecs=mp4a.40.2', ext: 'm4a' }, // AAC-LC (iOS Safari)
+                { mime: 'audio/mp4', ext: 'm4a' },
+                { mime: 'audio/ogg;codecs=opus', ext: 'ogg' },
+                { mime: 'audio/ogg', ext: 'ogg' },
+            ];
+            for (const c of candidates) {
+                try { if (MediaRecorder.isTypeSupported(c.mime)) return c; } catch {}
+            }
+            return { mime: '', ext: 'webm' }; // fallback
+        }
+
+        // Regex compartilhado para identificar arquivos de áudio gerados por nós.
+        // Aceita qualquer um dos formatos que pickAudioMime() pode escolher.
+        const AUDIO_FILENAME_RE = /(\d{13})_audio\.(?:webm|m4a|mp4|ogg)/;
+        const AUDIO_FILENAME_FULL_RE = /^(\d{13})_audio\.(webm|m4a|mp4|ogg)$/;
+
+        // ==========================================
         // WHISPER TRANSCRIPTION (substitui Web Speech API por qualidade clínica)
-        // Backend: POST /api/transcribe/audio recebe webm e devolve texto.
+        // Backend: POST /api/transcribe/audio recebe webm/m4a/etc e devolve texto.
         // ==========================================
         async function transcribeChunkViaWhisper(blob, consultationId) {
             if (!blob || blob.size < 1000) return null;
             try {
+                const ext = (window._audioFormat && window._audioFormat.ext) || 'webm';
                 const formData = new FormData();
-                formData.append('audio', blob, 'chunk.webm');
+                formData.append('audio', blob, `chunk.${ext}`);
                 formData.append('language', 'pt');
                 if (consultationId) formData.append('consultation_id', consultationId);
 
@@ -3127,6 +3271,10 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                 // Mantido como fallback caso seja necessário reativar:
                 // if (!speechRecognition && !initSpeechRecognition()) { isRecording = false; return; }
                 btnRecord.className = 'mic-btn recording';
+                const fab = document.getElementById('floating-mic');
+                if (fab) { fab.classList.add('recording'); fab.textContent = '⏹'; }
+                const fabStatus = document.getElementById('floating-mic-status');
+                if (fabStatus) { fabStatus.textContent = 'Gravando…'; fabStatus.classList.add('visible'); }
                 document.getElementById('audio-status').textContent = 'Ouvindo... Fale agora.';
                 document.getElementById('audio-status-icon').textContent = '✦';
 
@@ -3160,7 +3308,12 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                     // Start MediaRecorder for audio capture + Whisper streaming
                     audioChunks = [];
                     window.whisperChunkBuffer = [];
-                    mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+                    const audioFormat = pickAudioMime();
+                    window._audioFormat = audioFormat;
+                    flog(`🎙️ Codec selecionado: ${audioFormat.mime || '(default)'} (.${audioFormat.ext})`, 'info');
+                    mediaRecorder = audioFormat.mime
+                        ? new MediaRecorder(mediaStream, { mimeType: audioFormat.mime })
+                        : new MediaRecorder(mediaStream);
                     mediaRecorder.ondataavailable = (e) => {
                         if (e.data && e.data.size > 0) {
                             audioChunks.push(e.data);              // upload completo no fim
@@ -3169,11 +3322,20 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                     };
                     mediaRecorder.start(8000); // chunks de 8s (alinhado ao loop Whisper)
 
+                    // Wake lock: impede o iPhone/Android de dormir durante a gravação.
+                    // Suportado em iOS 16.4+ e Chrome desktop/mobile.
+                    if ('wakeLock' in navigator) {
+                        try {
+                            window._wakeLock = await navigator.wakeLock.request('screen');
+                            flog('🔆 Wake lock ativo — tela não vai dormir durante a gravação', 'info');
+                        } catch (e) { /* ignora — não é crítico */ }
+                    }
+
                     if (window.whisperLoopInterval) clearInterval(window.whisperLoopInterval);
                     window.whisperLoopInterval = setInterval(async () => {
                         if (!isRecording || !window.whisperChunkBuffer || window.whisperChunkBuffer.length === 0) return;
                         const chunks = window.whisperChunkBuffer.splice(0);
-                        const blob = new Blob(chunks, { type: 'audio/webm' });
+                        const blob = new Blob(chunks, { type: audioFormat.mime || 'audio/webm' });
                         const result = await transcribeChunkViaWhisper(blob, currentDocId);
                         if (result && result.text && result.text.trim()) {
                             const newText = result.text.trim();
@@ -3189,6 +3351,10 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                 // try { speechRecognition.start(); } catch (e) { }
             } else {
                 btnRecord.className = 'mic-btn idle';
+                const fab = document.getElementById('floating-mic');
+                if (fab) { fab.classList.remove('recording'); fab.textContent = '🎙️'; }
+                const fabStatus = document.getElementById('floating-mic-status');
+                if (fabStatus) { fabStatus.textContent = 'Salvando…'; }
                 document.getElementById('audio-status').textContent = 'Salvando sessão...';
                 document.getElementById('audio-status-icon').textContent = '💾';
                 stopSessionTimer(); stopAnamnesisTimer(); stopInsightsTimer();
@@ -3211,10 +3377,17 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                     await new Promise(r => { mediaRecorder.onstop = r; });
                 }
 
+                // Solta o wake lock se ainda estiver ativo
+                if (window._wakeLock) {
+                    try { await window._wakeLock.release(); } catch {}
+                    window._wakeLock = null;
+                }
+
                 // Drena o que sobrou no buffer (último chunk vem do mediaRecorder.stop)
                 if (window.whisperChunkBuffer && window.whisperChunkBuffer.length > 0) {
                     const lastChunks = window.whisperChunkBuffer.splice(0);
-                    const lastBlob = new Blob(lastChunks, { type: 'audio/webm' });
+                    const lastMime = (window._audioFormat && window._audioFormat.mime) || 'audio/webm';
+                    const lastBlob = new Blob(lastChunks, { type: lastMime });
                     try {
                         const r = await transcribeChunkViaWhisper(lastBlob, currentDocId);
                         if (r && r.text && r.text.trim()) {
@@ -3234,8 +3407,9 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                 let audioUrl = null;
                 let savedAudioFileName = null;
                 if (audioChunks.length > 0) {
-                    savedAudioFileName = `${Date.now()}_audio.webm`;
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const fmt = window._audioFormat || { mime: 'audio/webm', ext: 'webm' };
+                    savedAudioFileName = `${Date.now()}_audio.${fmt.ext}`;
+                    const audioBlob = new Blob(audioChunks, { type: fmt.mime || 'audio/webm' });
                     const sizeMB = (audioBlob.size / 1024 / 1024).toFixed(1);
 
                     // 1) Cofre local (IndexedDB) — primeiro, antes de qualquer
@@ -3254,7 +3428,7 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                     if (isFirebaseReady) {
                         try {
                             const fileRef = storageRef(storage, 'consultations/' + savedAudioFileName);
-                            await uploadBytes(fileRef, audioBlob, { contentType: 'audio/webm' });
+                            await uploadBytes(fileRef, audioBlob, { contentType: fmt.mime || 'audio/webm' });
                             audioUrl = await getDownloadURL(fileRef);
                             showToast('Áudio salvo no Firebase!', 'success');
                             // Sucesso → limpa cofre local pra não acumular
@@ -3306,6 +3480,11 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app</pre>
                 flog(`✅ Sessão salva (duração: ${Math.floor(duration / 60)}m${(duration % 60).toString().padStart(2, '0')}s)`, 'success');
                 document.getElementById('audio-status').textContent = 'Sessão encerrada.';
                 document.getElementById('audio-status-icon').textContent = '🎙️';
+                const fabStatusEnd = document.getElementById('floating-mic-status');
+                if (fabStatusEnd) {
+                    fabStatusEnd.textContent = '✓ Salvo';
+                    setTimeout(() => fabStatusEnd.classList.remove('visible'), 2000);
+                }
                 loadConsultations();
             }
         }
@@ -3652,6 +3831,11 @@ ${transcriptText.slice(0, 8000)}
             if (!audioEl || !originalUrl) return;
             if (!durationSecs || durationSecs <= 0) return;
             if (audioEl.dataset.enhanced === 'true') return;
+            // Só webm precisa do fix de Duration (MP4/M4A já tem moov atom).
+            if (!/\.webm(\?|$)/i.test(originalUrl)) {
+                audioEl.dataset.enhanced = 'true';
+                return;
+            }
             audioEl.dataset.enhanced = 'pending';
 
             // Revoke previous blob (from a previously-loaded consultation)
@@ -4135,7 +4319,7 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                 // 2) Build {ts -> {name, ref}} map from filenames "{timestamp}_audio.webm"
                 const audioFiles = [];
                 for (const item of listing.items) {
-                    const m = item.name.match(/^(\d{13})_audio\.webm$/);
+                    const m = item.name.match(AUDIO_FILENAME_FULL_RE);
                     if (m) audioFiles.push({ ts: parseInt(m[1], 10), name: item.name, ref: item });
                 }
                 if (!audioFiles.length) {
@@ -4223,7 +4407,7 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                 const listing = await listAll(storageRef(storage, 'consultations'));
                 const audioFiles = [];
                 for (const item of listing.items) {
-                    const m = item.name.match(/^(\d{13})_audio\.webm$/);
+                    const m = item.name.match(AUDIO_FILENAME_FULL_RE);
                     if (m) audioFiles.push({ ts: parseInt(m[1], 10), name: item.name });
                 }
                 audioFiles.sort((a, b) => b.ts - a.ts);
@@ -4235,12 +4419,12 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                     if (d.id === currentDocId) currentData = d.data();
                     const data = d.data();
                     if (data.audioUrl) {
-                        const m = data.audioUrl.match(/(\d{13})_audio\.webm/);
+                        const m = data.audioUrl.match(AUDIO_FILENAME_RE);
                         if (m) tsToDoc.set(parseInt(m[1], 10), { id: d.id, data });
                     }
                 });
                 const currentTs = currentData && currentData.audioUrl
-                    ? parseInt((currentData.audioUrl.match(/(\d{13})_audio\.webm/) || [])[1] || '0', 10)
+                    ? parseInt((currentData.audioUrl.match(AUDIO_FILENAME_RE) || [])[1] || '0', 10)
                     : 0;
                 const currentDocCreatedMs = currentData && currentData.createdAt
                     ? currentData.createdAt.toDate().getTime() : 0;
@@ -4328,9 +4512,16 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
             // Preserva o timestamp original quando o filename já está no formato {ts}_audio.webm.
             // Caso contrário gera um novo nome com Date.now() pra entrar no schema do listing.
             let targetName;
-            const m = (file.name || '').match(/^(\d{13})_audio\.webm$/);
+            const m = (file.name || '').match(AUDIO_FILENAME_FULL_RE);
             if (m) targetName = file.name;
-            else targetName = `${Date.now()}_audio.webm`;
+            else {
+                // Detecta extensão pela MIME ou nome do upload pra preservar o codec
+                const lowName = (file.name || '').toLowerCase();
+                let ext = 'webm';
+                if (file.type.includes('mp4') || lowName.endsWith('.m4a') || lowName.endsWith('.mp4')) ext = 'm4a';
+                else if (file.type.includes('ogg') || lowName.endsWith('.ogg')) ext = 'ogg';
+                targetName = `${Date.now()}_audio.${ext}`;
+            }
             try {
                 if (status) status.textContent = `Subindo ${targetName} (${(file.size / 1024 / 1024).toFixed(1)} MB)…`;
                 flog(`📤 Subindo ${targetName} (${file.size} bytes)`, 'info');
@@ -4380,7 +4571,7 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                 let sharingDocs = [];
                 snap.forEach(d => { if (d.id === docId) data = d.data(); });
                 if (data && data.audioUrl) {
-                    const m = data.audioUrl.match(/(\d{13}_audio\.webm)/);
+                    const m = data.audioUrl.match(/(\d{13}_audio\.(?:webm|m4a|mp4|ogg))/);
                     if (m) targetAudioName = m[1];
                 }
                 if (targetAudioName) {
@@ -4781,7 +4972,10 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                     const d = found.createdAt ? found.createdAt.toDate() : new Date();
                     const stamp = d.toISOString().slice(0, 16).replace(/[:T]/g, '-');
                     const pat = (found.patientName || 'consulta').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
-                    return `${stamp}_${pat}.webm`;
+                    // Extrai a extensão real do audioUrl pra preservar o codec
+                    const extMatch = found.audioUrl ? found.audioUrl.match(/_audio\.(webm|m4a|mp4|ogg)/i) : null;
+                    const ext = extMatch ? extMatch[1].toLowerCase() : 'webm';
+                    return `${stamp}_${pat}.${ext}`;
                 })();
                 const totalDurSecs = found.duration || 0;
                 const totalDurFmt = formatHMS(totalDurSecs);
@@ -4794,7 +4988,7 @@ gsutil cors set cors.json gs://ipagent-frontend.firebasestorage.app`;
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                                 webm
                             </a>
-                            <button onclick="downloadAsMp3('${found.audioUrl}', '${audioFileName.replace('.webm', '')}', ${totalDurSecs})" style="background:transparent; border:1px solid #f59e0b; color:#f59e0b; padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="Converte e baixa como MP3 (compatível com qualquer player)">🎵 MP3</button>
+                            <button onclick="downloadAsMp3('${found.audioUrl}', '${audioFileName.replace(/\.(webm|m4a|mp4|ogg)$/i, '')}', ${totalDurSecs})" style="background:transparent; border:1px solid #f59e0b; color:#f59e0b; padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="Converte e baixa como MP3 (compatível com qualquer player)">🎵 MP3</button>
                             <button onclick="copyAudioUrl('${found.audioUrl}')" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted-fg); padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer;" title="Copiar URL do áudio">🔗 URL</button>
                             <button onclick="openManualLinkAudio()" style="background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted-fg); padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer;" title="Trocar manualmente o áudio vinculado">🔁 Trocar</button>
                         </div>
